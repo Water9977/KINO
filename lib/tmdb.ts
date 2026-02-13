@@ -1,0 +1,73 @@
+const BASE_URL = process.env.NEXT_PUBLIC_TMDB_BASE_URL;
+const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+
+export const TMDB = {
+    getImage: (path: string, size: 'original' | 'w500' = 'original') => {
+        return `${process.env.NEXT_PUBLIC_TMDB_IMAGE_URL}/${size}${path}`;
+    },
+
+    getTrending: async () => {
+        const res = await fetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}`);
+        return res.json();
+    },
+
+    getNowPlaying: async () => {
+        const res = await fetch(`${BASE_URL}/movie/now_playing?api_key=${API_KEY}`);
+        return res.json();
+    },
+
+    getTopRated: async () => {
+        const res = await fetch(`${BASE_URL}/movie/top_rated?api_key=${API_KEY}`);
+        return res.json();
+    },
+
+    getPopular: async () => {
+        const res = await fetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
+        return res.json();
+    },
+
+    getUpcoming: async () => {
+        const res = await fetch(`${BASE_URL}/movie/upcoming?api_key=${API_KEY}`);
+        return res.json();
+    },
+
+    getMoviesByCategory: async (category: string, page: number = 1) => {
+        let endpoint = '';
+        switch (category) {
+            case 'trending':
+                endpoint = '/trending/movie/week';
+                break;
+            case 'now_playing':
+                endpoint = '/movie/now_playing';
+                break;
+            case 'top_rated':
+                endpoint = '/movie/top_rated';
+                break;
+            case 'popular':
+                endpoint = '/movie/popular';
+                break;
+            case 'upcoming':
+                endpoint = '/movie/upcoming';
+                break;
+            default:
+                endpoint = '/movie/popular';
+        }
+        const res = await fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
+        return res.json();
+    },
+
+    search: async (query: string) => {
+        const res = await fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+        return res.json();
+    },
+
+    getDetails: async (id: string, type: 'movie' | 'tv' = 'movie') => {
+        const res = await fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar`);
+        return res.json();
+    },
+
+    getSeasonDetails: async (tvId: number, seasonNumber: number) => {
+        const res = await fetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
+        return res.json();
+    }
+};
