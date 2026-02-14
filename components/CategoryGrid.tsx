@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { MovieCard } from "./MovieCard";
 import { fetchMovies } from "@/app/actions";
-import { Loader2 } from "lucide-react";
+import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
 
 interface CategoryGridProps {
     initialMovies: any[];
     category: string;
+    type?: 'movie' | 'tv';
+    filters?: { sort_by: string; genre_id?: string; provider_id?: string };
 }
 
-export function CategoryGrid({ initialMovies, category }: CategoryGridProps) {
+export function CategoryGrid({ initialMovies, category, type = 'movie', filters }: CategoryGridProps) {
     const [movies, setMovies] = useState(initialMovies);
     const [page, setPage] = useState(2); // Start fetching from page 2 (as page 1 is initial)
     const { ref, inView } = useInView();
@@ -24,7 +26,7 @@ export function CategoryGrid({ initialMovies, category }: CategoryGridProps) {
         setIsLoading(true);
         try {
             // Fetch next 2 pages (40 items)
-            const { movies: newMovies, nextPage } = await fetchMovies(category, page);
+            const { movies: newMovies, nextPage } = await fetchMovies(category, page, type, filters);
 
             if (!newMovies || newMovies.length === 0) {
                 setHasMore(false);
@@ -35,6 +37,7 @@ export function CategoryGrid({ initialMovies, category }: CategoryGridProps) {
                     const uniqueNewMovies = newMovies.filter((m: any) => !existingIds.has(m.id));
                     return [...prev, ...uniqueNewMovies];
                 });
+
                 setPage(nextPage);
             }
         } catch (error) {
@@ -50,6 +53,13 @@ export function CategoryGrid({ initialMovies, category }: CategoryGridProps) {
         }
     }, [inView]);
 
+    useEffect(() => {
+        // Reset when filters change
+        setMovies(initialMovies);
+        setPage(2);
+        setHasMore(true);
+    }, [filters, initialMovies]);
+
 
 
     return (
@@ -62,7 +72,7 @@ export function CategoryGrid({ initialMovies, category }: CategoryGridProps) {
 
             {hasMore && (
                 <div ref={ref} className="flex justify-center p-8 w-full mt-8">
-                    <Loader2 className="animate-spin text-[#2563eb]" size={32} />
+                    <KineticDotsLoader />
                 </div>
             )}
 

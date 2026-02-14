@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Bell, User, X } from "lucide-react";
+import { Search, Bell, User, X, Laptop } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { KinoLogo } from "./ui/KinoLogo";
 
 export const Navbar = () => {
@@ -13,10 +13,11 @@ export const Navbar = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const searchInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         const handleScroll = () => {
-            setScrolled(window.scrollY > 0);
+            setScrolled(window.scrollY > 20);
         };
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
@@ -36,88 +37,111 @@ export const Navbar = () => {
         }
     };
 
+    const navLinks = [
+        { name: "Home", href: "/browse" },
+        { name: "Discover", href: "/discover" },
+        { name: "Movies", href: "/movies" },
+        { name: "TV Shows", href: "/tv" },
+    ];
+
     return (
         <motion.nav
-            className={`fixed top-0 z-50 w-full transition-colors duration-300 ${scrolled ? "bg-kino-dark/90 backdrop-blur-lg border-b border-white/5" : "bg-transparent"}`}
-            initial={{ y: -100 }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.5 }}
+            className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled
+                ? "bg-black/60 backdrop-blur-2xl border-b border-white/5 py-3"
+                : "bg-gradient-to-b from-black/80 to-transparent py-5"
+                }`}
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
         >
-            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 relative">
-                {/* Logo */}
-                <Link href="/browse" className="flex items-center gap-1 group z-20 hover:scale-105 transition-transform duration-300">
-                    <KinoLogo fontSize="text-2xl" />
-                </Link>
+            <div className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-10 relative">
+                {/* Logo Section */}
+                <div className="flex items-center gap-10">
+                    <Link href="/browse" className="flex items-center gap-2 group z-20 hover:scale-105 transition-transform duration-300">
+                        <KinoLogo fontSize="text-2xl md:text-3xl" />
+                    </Link>
 
-                {/* Navigation Links (Hidden when search is open) */}
-                <AnimatePresence>
-                    {!isSearchOpen && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2"
-                        >
-                            {["Home", "Movies", "TV Shows", "New & Popular"].map((item) => (
-                                <Link
-                                    key={item}
-                                    href={`/browse`} // For now, all point to browse
-                                    className="text-sm font-medium text-gray-300 transition-colors hover:text-[#2563eb]"
+                    {/* Desktop Navigation Links */}
+                    <nav className="hidden lg:flex items-center gap-8">
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.name}
+                                href={link.href}
+                                className={`relative text-sm font-semibold transition-all duration-300 hover:text-[#2563eb] group ${pathname === link.href ? "text-white" : "text-gray-400"
+                                    }`}
+                            >
+                                {link.name}
+                                <span className={`absolute -bottom-1 left-0 h-0.5 w-0 bg-[#2563eb] transition-all duration-300 group-hover:w-full ${pathname === link.href ? "w-full" : "w-0"}`} />
+                            </Link>
+                        ))}
+                    </nav>
+                </div>
+
+                {/* Right Actions */}
+                <div className="flex items-center gap-4 md:gap-6 z-20">
+                    {/* Search Trigger/Input */}
+                    <div className="relative flex items-center">
+                        <AnimatePresence mode="wait">
+                            {!isSearchOpen ? (
+                                <motion.button
+                                    key="search-btn"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    onClick={() => setIsSearchOpen(true)}
+                                    className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-all"
                                 >
-                                    {item}
-                                </Link>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Search Bar Overlay */}
-                <AnimatePresence>
-                    {isSearchOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="absolute inset-0 flex items-center justify-center px-4 md:px-20 z-10"
-                        >
-                            <form onSubmit={handleSearchSubmit} className="relative w-full max-w-2xl">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder="Search movies, shows, people..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full h-10 rounded-full bg-white/10 border border-white/10 pl-12 pr-12 text-white placeholder-gray-400 focus:outline-none focus:border-[#2563eb]/50 focus:bg-black/40 backdrop-blur-md transition-all"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => { setIsSearchOpen(false); setSearchQuery(""); }}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                    <Search size={20} />
+                                </motion.button>
+                            ) : (
+                                <motion.div
+                                    key="search-input"
+                                    initial={{ width: 0, opacity: 0 }}
+                                    animate={{ width: "450px", opacity: 1 }}
+                                    exit={{ width: 0, opacity: 0 }}
+                                    className="relative flex items-center"
                                 >
-                                    <X size={16} />
-                                </button>
-                            </form>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                    <form onSubmit={handleSearchSubmit} className="w-full">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                        <input
+                                            ref={searchInputRef}
+                                            type="text"
+                                            placeholder="Titles, people, genres..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onBlur={() => !searchQuery && setIsSearchOpen(false)}
+                                            className="w-full h-10 rounded-full bg-white/10 border border-white/10 pl-10 pr-10 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#2563eb]/50 focus:bg-black/60 transition-all"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsSearchOpen(false); setSearchQuery(""); }}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </form>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-6 z-20">
-                    {!isSearchOpen && (
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            className="text-gray-300 hover:text-[#2563eb] transition-colors"
-                        >
-                            <Search size={20} />
+                    <div className="hidden sm:flex items-center gap-4">
+                        <button className="relative p-2 text-gray-300 hover:text-white transition-colors group">
+                            <Bell size={20} />
+                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2563eb] ring-2 ring-black animate-pulse" />
                         </button>
-                    )}
-                    <button className="text-gray-300 hover:text-[#2563eb] transition-colors">
-                        <Bell size={20} />
-                    </button>
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#2563eb] to-purple-600 p-[1px]">
-                        <div className="flex h-full w-full items-center justify-center rounded-full bg-kino-dark">
-                            <User size={16} className="text-white" />
+
+                        <Link href="/browse" className="hidden xl:flex items-center gap-2 group p-2 text-gray-400 hover:text-white transition-colors">
+                            <Laptop size={20} />
+                            <span className="text-xs font-bold tracking-tight opacity-0 group-hover:opacity-100 transition-opacity">WATCH ON TV</span>
+                        </Link>
+                    </div>
+
+                    <div className="relative group cursor-pointer">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-purple-600 p-[1.5px] transition-transform group-hover:scale-110">
+                            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0a0a]">
+                                <User size={18} className="text-white" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -125,3 +149,4 @@ export const Navbar = () => {
         </motion.nav>
     );
 };
+
