@@ -26,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark selection:bg-blue-600/30">
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${outfit.variable} antialiased bg-[#0a0a0a] text-white custom-scrollbar`}
       >
         {children}
