@@ -60,8 +60,8 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
             </AnimatePresence>
 
             {/* Content */}
-            <div className="relative z-30 flex h-full items-end pb-40 px-6 md:px-10 w-full">
-                <div className="max-w-2xl w-full">
+            <div className="relative z-30 flex h-full items-end pb-40 px-6 md:px-10 w-full pointer-events-none">
+                <div className="max-w-2xl w-full pointer-events-auto">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={`content-${currentMovie.id}`}
