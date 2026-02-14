@@ -32,3 +32,7 @@ export async function fetchMovies(category: string, page: number, type: 'movie' 
         nextPage: page + 2
     };
 }
+
+export async function getSeasonDetails(tvId: number, seasonNumber: number) {
+    return await TMDB.getSeasonDetails(tvId, seasonNumber);
+}

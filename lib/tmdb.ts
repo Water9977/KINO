@@ -1,5 +1,5 @@
-const BASE_URL = process.env.NEXT_PUBLIC_TMDB_BASE_URL;
-const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+const BASE_URL = process.env.TMDB_BASE_URL;
+const API_KEY = process.env.TMDB_API_KEY;
 
 export const TMDB = {
     getImage: (path: string, size: 'original' | 'w500' = 'original') => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Server, AlertTriangle, Shield, ChevronDown, MonitorPlay, Info } from "lucide-react";
-import { TMDB } from "@/lib/tmdb";
+import { getSeasonDetails } from "@/app/actions";
 import Image from "next/image";
 import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
 
@@ -49,7 +49,7 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
         if (mediaType === 'tv' && seasons?.length) {
             const fetchEpisodes = async () => {
                 try {
-                    const data = await TMDB.getSeasonDetails(tmdbId, selectedSeason);
+                    const data = await getSeasonDetails(tmdbId, selectedSeason);
                     if (data?.episodes) {
                         setEpisodes(data.episodes);
                     }
