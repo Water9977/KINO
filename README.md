@@ -8,11 +8,17 @@ A modern, high-performance movie streaming application built with Next.js 14. Ki
 -   **Dynamic Category Pages:** Dedicated pages for each genre and category with batched loading for optimal performance.
 -   **TV Show Support:** Full support for TV series with a custom season and episode selector.
 -   **Advanced Search:** Real-time search functionality for movies and TV shows.
+-   **Profile Card:** Interactive, premium user profile card with:
+    -   Custom "Kino Blue" animated branding.
+    -   Social media integrations (LinkedIn, GitHub, Instagram).
+    -   Spotlight hover effects and glassmorphism design.
 -   **Premium UI/UX:**
-    -   Glassmorphism design language.
-    -   GPU-accelerated animations (60fps+).
-    -   Responsive grid layouts.
--   **Video Player:** Integrated video player with multiple server options (VidSrc, SmashyStream) for reliable playback.
+    -   Signature "Kino Blue" thematic styling.
+    -   Glassmorphism design language with refined typography.
+    -   GPU-accelerated animations (60fps+) using Framer Motion.
+    -   Responsive grid layouts and interactive hover states.
+    -   Custom kinetic loaders for a polished user experience.
+-   **Video Player:** Integrated video player with multiple server options for reliable playback.
 
 ## 🛠️ Tech Stack
 
