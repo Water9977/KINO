@@ -98,6 +98,11 @@ export const TMDB = {
 
     discover: async (type: 'movie' | 'tv', sort_by: string = 'popularity.desc', genre_id?: string, page: number = 1, provider_id?: string) => {
         let url = `${BASE_URL}/discover/${type}?api_key=${API_KEY}&page=${page}&sort_by=${sort_by}&watch_region=US`;
+
+        // Fix for "Top Rated" showing obscure movies with 1-2 votes
+        if (sort_by === 'vote_average.desc') {
+            url += `&vote_count.gte=1000`;
+        }
         if (genre_id) {
             url += `&with_genres=${genre_id}`;
         }
