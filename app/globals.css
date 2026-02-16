@@ -85,4 +85,23 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
     }
+
+    .kino-scrollbar::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .kino-scrollbar::-webkit-scrollbar-track {
+        background: #0a0a0a;
+        border-radius: 10px;
+    }
+
+    .kino-scrollbar::-webkit-scrollbar-thumb {
+        background: #2563eb;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+    }
+
+    .kino-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #3b82f6;
+    }
 }

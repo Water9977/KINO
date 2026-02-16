@@ -1,8 +1,92 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ListFilter } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { ListFilter, ChevronDown, Check } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface Option {
+    id: string | number;
+    name: string;
+}
+
+interface CustomSelectProps {
+    value: string;
+    options: Option[];
+    onChange: (value: string) => void;
+    placeholder: string;
+    className?: string;
+}
+
+const CustomSelect = ({ value, options, onChange, placeholder, className }: CustomSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const selectedOption = options.find(opt => opt.id.toString() === value.toString());
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    return (
+        <div ref={containerRef} className={`relative ${className}`}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full h-10 flex items-center justify-between gap-3 bg-black/40 border border-white/10 rounded-lg px-4 text-sm text-gray-200 hover:bg-white/10 transition-all focus:outline-none focus:ring-2 focus:ring-[#2563eb]/50"
+            >
+                <span className="truncate">{selectedOption ? selectedOption.name : placeholder}</span>
+                <ChevronDown size={16} className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="absolute z-[100] mt-2 w-full min-w-[220px] max-h-72 overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl kino-scrollbar"
+                    >
+                        <div className="p-1.5 space-y-0.5">
+                            {options.map((option) => (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(option.id.toString());
+                                        setIsOpen(false);
+                                    }}
+                                    className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition-all ${value.toString() === option.id.toString()
+                                        ? 'bg-white/10 text-white font-bold'
+                                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                >
+                                    <span className="truncate">{option.name}</span>
+                                    {value.toString() === option.id.toString() && (
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                        >
+                                            <Check size={16} className="text-[#2563eb]" strokeWidth={3} />
+                                        </motion.div>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
 
 interface FilterBarProps {
     type: "movie" | "tv";
@@ -19,7 +103,6 @@ export function FilterBar({ type, genres, providers = [] }: FilterBarProps) {
     const [provider, setProvider] = useState(searchParams.get("provider") || "");
 
     useEffect(() => {
-        // Sync state with URL if it changes externally (e.g. back button)
         setSort(searchParams.get("sort_by") || "popularity.desc");
         setGenre(searchParams.get("genre") || "");
         setProvider(searchParams.get("provider") || "");
@@ -27,94 +110,73 @@ export function FilterBar({ type, genres, providers = [] }: FilterBarProps) {
 
     const updateFilters = (newSort: string, newGenre: string, newProvider: string) => {
         const params = new URLSearchParams(searchParams);
-
-        // Always set sort
         params.set("sort_by", newSort);
-
-        // Set or delete genre
         if (newGenre) params.set("genre", newGenre);
         else params.delete("genre");
-
-        // Set or delete provider
         if (newProvider) params.set("provider", newProvider);
         else params.delete("provider");
-
-        // Ensure type matches the page context if not already there, 
-        // but typically the page handles the fetch based on its own type. 
-        // However, if we switch tabs, we might want to keep filters? 
-        // For now, assume single page application logic.
-
-        // Replace URL
         router.push(`?${params.toString()}`);
     };
 
-    const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        setSort(val);
-        updateFilters(val, genre, provider);
-    };
+    const sortOptions = [
+        { id: "popularity.desc", name: "Most Popular" },
+        { id: "vote_average.desc", name: "Top Rated" },
+        { id: type === 'movie' ? "primary_release_date.desc" : "first_air_date.desc", name: "Newest Release" }
+    ];
 
-    const handleGenreChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        setGenre(val);
-        updateFilters(sort, val, provider);
-    };
+    const genreOptions = [
+        { id: "", name: "All Genres" },
+        ...genres.map(g => ({ id: g.id.toString(), name: g.name }))
+    ];
 
-    const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        setProvider(val);
-        updateFilters(sort, genre, val);
-    };
+    const providerOptions = [
+        { id: "", name: "All Providers" },
+        ...providers.map(p => ({ id: p.provider_id.toString(), name: p.provider_name }))
+    ];
 
     return (
-        <div className="flex flex-col sm:flex-row gap-4 mb-8 items-center bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-gray-400">
-                <ListFilter size={20} />
-                <span className="font-semibold text-sm uppercase tracking-wide">Filters</span>
+        <div className="relative z-40 flex flex-col sm:flex-row gap-4 mb-10 items-center bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-2.5 px-2 text-gray-400">
+                <div className="p-2 rounded-lg bg-white/5 border border-white/10 text-[#2563eb]">
+                    <ListFilter size={18} />
+                </div>
+                <span className="font-bold text-xs uppercase tracking-widest text-gray-300">Quick Filters</span>
             </div>
 
             <div className="flex flex-wrap gap-4 w-full sm:w-auto">
-                {/* Sort Dropdown */}
-                <select
+                <CustomSelect
                     value={sort}
-                    onChange={handleSortChange}
-                    className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2563eb] cursor-pointer hover:bg-white/10 transition-colors"
-                >
-                    <option value="popularity.desc">Most Popular</option>
-                    <option value="vote_average.desc">Top Rated</option>
-                    <option value={type === 'movie' ? "primary_release_date.desc" : "first_air_date.desc"}>
-                        Newest Release
-                    </option>
-                </select>
+                    options={sortOptions}
+                    onChange={(val) => {
+                        setSort(val);
+                        updateFilters(val, genre, provider);
+                    }}
+                    placeholder="Sort By"
+                    className="w-full sm:w-56"
+                />
 
-                {/* Genre Dropdown */}
-                <select
+                <CustomSelect
                     value={genre}
-                    onChange={handleGenreChange}
-                    className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2563eb] cursor-pointer hover:bg-white/10 transition-colors max-w-[200px]"
-                >
-                    <option value="">All Genres</option>
-                    {genres.map((g) => (
-                        <option key={g.id} value={g.id.toString()}>
-                            {g.name}
-                        </option>
-                    ))}
-                </select>
+                    options={genreOptions}
+                    onChange={(val) => {
+                        setGenre(val);
+                        updateFilters(sort, val, provider);
+                    }}
+                    placeholder="All Genres"
+                    className="w-full sm:w-56"
+                />
 
-                {/* Provider Dropdown */}
                 {providers.length > 0 && (
-                    <select
+                    <CustomSelect
                         value={provider}
-                        onChange={handleProviderChange}
-                        className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2563eb] cursor-pointer hover:bg-white/10 transition-colors max-w-[200px]"
-                    >
-                        <option value="">All Providers</option>
-                        {providers.map((p) => (
-                            <option key={p.provider_id} value={p.provider_id.toString()}>
-                                {p.provider_name}
-                            </option>
-                        ))}
-                    </select>
+                        options={providerOptions}
+                        onChange={(val) => {
+                            setProvider(val);
+                            updateFilters(sort, genre, val);
+                        }}
+                        placeholder="All Providers"
+                        className="w-full sm:w-56"
+                    />
                 )}
             </div>
         </div>
