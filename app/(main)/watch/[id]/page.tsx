@@ -128,48 +128,52 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                         />
                     </div>
 
-                    {/* Content Details Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-                        {/* Synopsis */}
-                        <div className="lg:col-span-2 space-y-6">
-                            <div className="flex items-center gap-4">
-                                <div className="h-8 w-1.5 bg-[#2563eb] rounded-full" />
-                                <h2 className="text-2xl font-black tracking-tight">STORYLINE</h2>
+                    {/* Content Details - Centered Layout */}
+                    <div className="flex flex-col items-center gap-24 py-12">
+
+                        {/* Synopsis - Centered and Focused */}
+                        <div className="max-w-4xl w-full space-y-8 text-center">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="h-1.5 w-16 bg-[#2563eb] rounded-full" />
+                                <h2 className="text-3xl font-black tracking-tight uppercase">STORYLINE</h2>
                             </div>
-                            <p className="text-lg leading-relaxed text-gray-400 font-medium">
+                            <p className="text-xl leading-relaxed text-gray-400 font-medium max-w-3xl mx-auto">
                                 {overview || "No detailed synopsis available for this title."}
                             </p>
                         </div>
 
-                        {/* High-End Cast List */}
-                        <div className="space-y-8">
-                            <div className="flex items-center gap-4">
-                                <div className="h-8 w-1.5 bg-purple-600 rounded-full" />
-                                <h2 className="text-2xl font-black tracking-tight">CAST</h2>
+                        {/* Cast - Scattered Tiles Below */}
+                        <div className="w-full space-y-12">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="h-1.5 w-16 bg-purple-600 rounded-full" />
+                                <h2 className="text-3xl font-black tracking-tight uppercase">THE CAST</h2>
                             </div>
-                            <div className="grid grid-cols-1 gap-4">
+
+                            <div className="flex flex-wrap justify-center gap-6 max-w-6xl mx-auto">
                                 {cast?.map((actor: any) => (
-                                    <div key={actor.id} className="flex items-center gap-4 group cursor-pointer p-2 rounded-2xl hover:bg-white/5 transition-all">
-                                        <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 bg-gray-900 shadow-lg transition-transform group-hover:scale-105">
+                                    <div
+                                        key={actor.id}
+                                        className="bg-[#151515] border border-white/5 rounded-2xl p-3 flex items-center gap-4 transition-all hover:border-[#2563eb]/30 hover:bg-[#2563eb]/5 group min-w-[240px] max-w-[280px]"
+                                    >
+                                        <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 relative shadow-xl">
                                             {actor.profile_path ? (
                                                 <Image
                                                     src={`https://image.tmdb.org/t/p/w200${actor.profile_path}`}
                                                     alt={actor.name}
-                                                    width={56}
-                                                    height={56}
-                                                    className="h-full w-full object-cover"
+                                                    fill
+                                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
                                                 />
                                             ) : (
-                                                <div className="flex h-full w-full items-center justify-center bg-white/5">
+                                                <div className="flex h-full w-full items-center justify-center bg-gray-900">
                                                     <User size={20} className="text-gray-700" />
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 pr-2">
                                             <p className="text-sm font-black text-white group-hover:text-[#2563eb] transition-colors truncate uppercase tracking-wide">
                                                 {actor.name}
                                             </p>
-                                            <p className="text-xs text-gray-500 font-medium truncate italic">
+                                            <p className="text-[10px] text-gray-500 font-bold truncate uppercase tracking-widest mt-0.5">
                                                 {actor.character}
                                             </p>
                                         </div>

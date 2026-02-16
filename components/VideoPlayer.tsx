@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Play, Server, AlertTriangle, Shield, ChevronDown, MonitorPlay, Info } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Play, Server, ChevronDown, MonitorPlay, Info, Clock, ArrowRight, SkipForward } from "lucide-react";
 import { getSeasonDetails } from "@/app/actions";
 import Image from "next/image";
 import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
@@ -13,19 +13,44 @@ interface VideoPlayerProps {
     seasons?: any[];
 }
 
+// Helper: format seconds → "1h 23m 45s" or "12:34"
+const formatTime = (totalSeconds: number): string => {
+    if (!totalSeconds || totalSeconds < 1) return "0:00";
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = Math.floor(totalSeconds % 60);
+    if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+// ── Video Provider Definitions ──
+// VidLink supports: startAt param + postMessage events (play, pause, seeked, timeupdate, ended)
+// VidSrc does NOT support any time-seek parameter or postMessage events
 const videoProviders = [
     {
         name: 'Quality',
-        getUrl: (tmdbId: number, mediaType: string, season?: number, episode?: number) => {
-            if (mediaType === 'tv') {
-                return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?player=jw&primaryColor=ffffff&secondaryColor=808080&iconColor=ffffff`;
+        supportsStartAt: true,       // Official param: startAt=<seconds>
+        supportsPostMessage: true,    // Sends PLAYER_EVENT + MEDIA_DATA via postMessage
+        origin: 'https://vidlink.pro',
+        getUrl: (tmdbId: number, mediaType: string, season?: number, episode?: number, startAt?: number) => {
+            let url = mediaType === 'tv'
+                ? `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?player=jw&primaryColor=ffffff&secondaryColor=808080&iconColor=ffffff`
+                : `https://vidlink.pro/movie/${tmdbId}?player=jw&primaryColor=ffffff&secondaryColor=808080&iconColor=ffffff`;
+            // Official VidLink param: startAt=<seconds>
+            if (startAt && startAt > 10) {
+                url += `&startAt=${Math.floor(startAt)}`;
             }
-            return `https://vidlink.pro/movie/${tmdbId}?player=jw&primaryColor=ffffff&secondaryColor=808080&iconColor=ffffff`;
+            return url;
         },
     },
     {
         name: 'Fast',
-        getUrl: (tmdbId: number, mediaType: string, season?: number, episode?: number) => `https://vidsrc.xyz/embed/${mediaType === 'movie' ? 'movie' : 'tv'}/${tmdbId}${season && episode ? `/${season}/${episode}` : ''}`,
+        supportsStartAt: false,      // No time-seek support
+        supportsPostMessage: false,   // No postMessage events
+        origin: null,
+        getUrl: (tmdbId: number, mediaType: string, season?: number, episode?: number, _startAt?: number) => {
+            return `https://vidsrc.xyz/embed/${mediaType === 'movie' ? 'movie' : 'tv'}/${tmdbId}${season && episode ? `/${season}/${episode}` : ''}`;
+        },
     },
 ];
 
@@ -41,8 +66,83 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
     const [episodes, setEpisodes] = useState<any[]>([]);
     const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false);
 
-    // Filter out Season 0 (Specials) if preferred, or keep it. usually S1 is default.
+    // ── Seamless Server Switching State ──
+    const currentTimeRef = useRef<number>(0);      // Real playback time from postMessage (seconds)
+    const durationRef = useRef<number>(0);          // Total duration from postMessage
+    const fallbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null); // Fallback timer for providers without postMessage
+    const [switchNotification, setSwitchNotification] = useState<{
+        fromServer: string;
+        toServer: string;
+        time: number;
+        canAutoSeek: boolean; // true if target server supports startAt
+    } | null>(null);
+    const [startAtOffset, setStartAtOffset] = useState<number>(0);
+
+    // Filter out Season 0
     const availableSeasons = seasons?.filter(s => s.season_number > 0) || [];
+
+    // ── Listen to VidLink postMessage events for real-time playback tracking ──
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            // Only process messages from VidLink's origin
+            if (event.origin !== 'https://vidlink.pro') return;
+
+            const data = event.data;
+
+            // Handle PLAYER_EVENT (play, pause, seeked, timeupdate, ended)
+            if (data?.type === 'PLAYER_EVENT') {
+                const { currentTime, duration } = data.data;
+                if (typeof currentTime === 'number') {
+                    currentTimeRef.current = currentTime;
+                }
+                if (typeof duration === 'number') {
+                    durationRef.current = duration;
+                }
+            }
+
+            // Handle MEDIA_DATA (watch progress object)
+            if (data?.type === 'MEDIA_DATA') {
+                const mediaData = data.data;
+                // Store in localStorage for continue-watching feature
+                try {
+                    const existing = JSON.parse(localStorage.getItem('vidLinkProgress') || '{}');
+                    const merged = { ...existing, ...mediaData };
+                    localStorage.setItem('vidLinkProgress', JSON.stringify(merged));
+                } catch {
+                    localStorage.setItem('vidLinkProgress', JSON.stringify(mediaData));
+                }
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
+    // ── Fallback timer for providers without postMessage ──
+    // Only runs when the active provider does NOT support postMessage
+    useEffect(() => {
+        const provider = videoProviders[currentServer];
+
+        if (isPlaying && !isLoading && !provider.supportsPostMessage) {
+            // Start a 1-second fallback ticker
+            fallbackTimerRef.current = setInterval(() => {
+                currentTimeRef.current += 1;
+            }, 1000);
+        } else {
+            // Clear fallback timer
+            if (fallbackTimerRef.current) {
+                clearInterval(fallbackTimerRef.current);
+                fallbackTimerRef.current = null;
+            }
+        }
+
+        return () => {
+            if (fallbackTimerRef.current) {
+                clearInterval(fallbackTimerRef.current);
+                fallbackTimerRef.current = null;
+            }
+        };
+    }, [isPlaying, isLoading, currentServer]);
 
     // Fetch episodes when selected season changes
     useEffect(() => {
@@ -61,7 +161,7 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
         }
     }, [tmdbId, mediaType, selectedSeason, seasons]);
 
-    // Reset when Movie ID changes
+    // Reset everything when content changes
     useEffect(() => {
         setHasUserConsent(false);
         setIsPlaying(false);
@@ -69,38 +169,71 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
         setCurrentServer(0);
         setSelectedSeason(1);
         setSelectedEpisode(1);
+        currentTimeRef.current = 0;
+        durationRef.current = 0;
+        setStartAtOffset(0);
+        setSwitchNotification(null);
     }, [tmdbId]);
 
-    const handleServerChange = (index: number) => {
+    // ── Seamless Server Switch Handler ──
+    const handleServerChange = useCallback((index: number) => {
+        if (index === currentServer) return;
+
+        const capturedTime = currentTimeRef.current;
+        const fromProvider = videoProviders[currentServer];
+        const toProvider = videoProviders[index];
+
+        // Show notification
+        if (capturedTime > 10) {
+            setSwitchNotification({
+                fromServer: fromProvider.name,
+                toServer: toProvider.name,
+                time: capturedTime,
+                canAutoSeek: toProvider.supportsStartAt,
+            });
+            // Auto-dismiss after 8 seconds
+            setTimeout(() => setSwitchNotification(null), 8000);
+        }
+
+        // Set the startAt offset for the new URL
+        setStartAtOffset(capturedTime);
+
+        // Switch server — do NOT reset currentTimeRef, it carries across
         setCurrentServer(index);
         setIsLoading(true);
-    };
+    }, [currentServer]);
 
     const handleStartStreaming = () => {
         setHasUserConsent(true);
         setIsPlaying(true);
+        currentTimeRef.current = 0;
+        durationRef.current = 0;
+        setStartAtOffset(0);
     };
 
     const handleEpisodeSelect = (episodeNumber: number) => {
         setSelectedEpisode(episodeNumber);
-        setIsLoading(true); // Re-trigger loading for new source
-        // Scroll to top of player to see it change
+        setIsLoading(true);
+        currentTimeRef.current = 0;
+        durationRef.current = 0;
+        setStartAtOffset(0);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Construct src based on type
+    // Construct iframe src with startAt offset
     const src = videoProviders[currentServer].getUrl(
         tmdbId,
         mediaType,
         mediaType === 'tv' ? selectedSeason : undefined,
-        mediaType === 'tv' ? selectedEpisode : undefined
+        mediaType === 'tv' ? selectedEpisode : undefined,
+        startAtOffset
     );
 
     return (
         <div className="w-full space-y-6">
             <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl shadow-[#2563eb]/10 border border-white/5 group ring-1 ring-white/10">
                 {!hasUserConsent ? (
-                    // Initial Consent Screen - Minimal Redesign
+                    // Initial Consent Screen
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 overflow-hidden">
                         <div className="relative z-10 flex flex-col items-center">
                             <button
@@ -116,7 +249,7 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
                         </div>
                     </div>
                 ) : !isPlaying ? (
-                    // Play Button Overlay - Minimal Glowing Icon
+                    // Play Button Overlay
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all z-10 group/player">
                         <button
                             onClick={() => setIsPlaying(true)}
@@ -127,7 +260,6 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
                                 className="text-white fill-white transition-all duration-500 drop-shadow-[0_0_0_rgba(37,99,235,0)] group-hover:drop-shadow-[0_0_30px_rgba(37,99,235,0.8)]"
                             />
                         </button>
-
                         <div className="mt-6 text-center space-y-2">
                             <h3 className="text-xl font-bold text-white tracking-tight">
                                 {mediaType === 'tv' ? `S${selectedSeason} : E${selectedEpisode}` : 'PLAY MOVIE'}
@@ -137,7 +269,7 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
                 ) : (
                     <>
                         <iframe
-                            key={`${tmdbId}-${currentServer}-${mediaType}-${selectedSeason}-${selectedEpisode}`}
+                            key={`${tmdbId}-${currentServer}-${mediaType}-${selectedSeason}-${selectedEpisode}-${startAtOffset}`}
                             src={src}
                             className="absolute inset-0 w-full h-full rounded-2xl bg-[#050505]"
                             onLoad={() => setIsLoading(false)}
@@ -146,20 +278,69 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         />
 
-                        {/* Loading Spinner */}
+                        {/* Loading State with Switch Info */}
                         {isLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a] z-10">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] z-10 gap-6">
                                 <KineticDotsLoader />
+                                {switchNotification && switchNotification.time > 10 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="flex flex-col items-center gap-3"
+                                    >
+                                        <div className="flex items-center gap-3 bg-[#2563eb]/10 border border-[#2563eb]/20 rounded-xl px-5 py-3 text-sm">
+                                            <Clock size={16} className="text-[#2563eb]" />
+                                            <span className="text-gray-300 font-medium">
+                                                {switchNotification.canAutoSeek ? (
+                                                    <>Resuming at <span className="text-white font-black">{formatTime(switchNotification.time)}</span></>
+                                                ) : (
+                                                    <>Seek manually to <span className="text-white font-black">{formatTime(switchNotification.time)}</span></>
+                                                )}
+                                            </span>
+                                        </div>
+                                        {!switchNotification.canAutoSeek && (
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                                This server doesn&apos;t support auto-resume
+                                            </p>
+                                        )}
+                                    </motion.div>
+                                )}
                             </div>
                         )}
+
+                        {/* Server Switch Toast (after iframe loads) */}
+                        <AnimatePresence>
+                            {switchNotification && !isLoading && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -20, x: '-50%' }}
+                                    animate={{ opacity: 1, y: 0, x: '-50%' }}
+                                    exit={{ opacity: 0, y: -20, x: '-50%' }}
+                                    className="absolute top-4 left-1/2 z-30 flex items-center gap-3 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-3 shadow-2xl"
+                                >
+                                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest">
+                                        <span className="text-gray-400">{switchNotification.fromServer}</span>
+                                        <ArrowRight size={14} className="text-[#2563eb]" />
+                                        <span className="text-[#2563eb]">{switchNotification.toServer}</span>
+                                    </div>
+                                    <div className="w-px h-5 bg-white/10" />
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300">
+                                        <Clock size={12} className="text-[#2563eb]" />
+                                        {switchNotification.canAutoSeek ? (
+                                            <span>Resumed at {formatTime(switchNotification.time)}</span>
+                                        ) : (
+                                            <span>Seek to {formatTime(switchNotification.time)}</span>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </>
                 )}
             </div>
 
             {/* Controls & Info Bar */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-2">
-
-                {/* Server Selection - New Location */}
+                {/* Server Selection */}
                 <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                         <Server size={14} /> Server
@@ -169,12 +350,12 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
                             <button
                                 key={provider.name}
                                 onClick={() => handleServerChange(index)}
-                                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold transition-all ${currentServer === index
-                                        ? "bg-[#2563eb] text-white shadow-lg shadow-[#2563eb]/20"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${currentServer === index
+                                    ? "bg-[#2563eb] text-white shadow-lg shadow-[#2563eb]/40 scale-105"
+                                    : "text-gray-400 hover:text-white hover:bg-white/5"
                                     }`}
                             >
-                                {provider.name === 'Fast' ? '🚀' : '💎'} {provider.name}
+                                {provider.name === 'Fast' ? '🚀' : '✨'} {provider.name}
                             </button>
                         ))}
                     </div>
@@ -209,6 +390,9 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
                                     onClick={() => {
                                         setSelectedSeason(season.season_number);
                                         setSelectedEpisode(1);
+                                        currentTimeRef.current = 0;
+                                        durationRef.current = 0;
+                                        setStartAtOffset(0);
                                     }}
                                     className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black tracking-widest transition-all ${selectedSeason === season.season_number
                                         ? 'bg-[#2563eb] text-white shadow-lg shadow-[#2563eb]/20'
@@ -277,4 +461,3 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
         </div>
     );
 };
-
