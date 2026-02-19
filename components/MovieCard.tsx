@@ -37,7 +37,7 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: (index % 6) * 0.1, duration: 0.5 }}
-            className="group relative flex flex-col gap-3 rounded-2xl p-2 transition-all duration-500 hover:bg-white/5"
+            className="group relative flex flex-col gap-3 rounded-2xl p-2 transition-all duration-500 hover:bg-white/5 active:scale-95"
         >
             <Link href={linkHref} className="relative block w-full">
                 <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-kino-surface ring-1 ring-white/5 transition-all duration-500 group-hover:ring-[#2563eb]/50 group-hover:shadow-[0_20px_40px_-10px_rgba(37,99,235,0.3)]">
@@ -52,15 +52,15 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
                     {/* Gradient Overlays */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 transition-opacity group-hover:opacity-80" />
 
-                    {/* Hover Content */}
+                    {/* Hover Content - Play Button (Hidden on touch by default to keep poster clean, visible on hover/focus) */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-500 group-hover:opacity-100">
                         <div className="translate-y-4 rounded-full bg-[#2563eb] p-4 shadow-2xl transition-all duration-500 group-hover:translate-y-0 group-hover:scale-110">
                             <Play size={24} fill="currentColor" className="text-white translate-x-0.5" />
                         </div>
                     </div>
 
-                    {/* Quick Badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md border border-white/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                    {/* Quick Badge - Always visible on mobile, hover on desktop */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md border border-white/10 opacity-100 lg:opacity-0 transition-opacity duration-500 lg:group-hover:opacity-100">
                         <Star size={10} className="text-yellow-500" fill="currentColor" />
                         {rating}
                     </div>

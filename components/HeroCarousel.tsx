@@ -34,7 +34,7 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
     // For now, will use Rating and Year.
 
     return (
-        <div className="relative h-[85vh] w-full overflow-hidden">
+        <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden">
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentMovie.id}
@@ -60,8 +60,8 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
             </AnimatePresence>
 
             {/* Content */}
-            <div className="relative z-30 flex h-full items-end pb-40 px-6 md:px-10 w-full pointer-events-none">
-                <div className="max-w-2xl w-full pointer-events-auto">
+            <div className="relative z-30 flex h-full items-end pb-24 md:pb-40 px-4 md:px-10 w-full pointer-events-none">
+                <div className="max-w-4xl w-full pointer-events-auto">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={`content-${currentMovie.id}`}
@@ -73,31 +73,31 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                         >
                             {/* Meta Pills */}
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold backdrop-blur-md border border-white/10 text-yellow-400">
+                                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold backdrop-blur-md border border-white/10 text-yellow-400 text-sm">
                                     <Star size={14} fill="currentColor" />
                                     <span>{currentMovie.vote_average?.toFixed(1)}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-md border border-white/10 text-white">
+                                <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-md border border-white/10 text-white text-sm">
                                     <Calendar size={14} />
                                     <span>{year}</span>
                                 </div>
-                                <div className="rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-md border border-white/10 text-white uppercase text-xs tracking-wider">
+                                <div className="rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-md border border-white/10 text-white uppercase text-[10px] md:text-xs tracking-wider">
                                     {isTv ? 'Series' : 'Movie'}
                                 </div>
                             </div>
 
                             {/* Title */}
-                            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-[1.1]">
+                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1] max-w-full md:max-w-3xl">
                                 {title}
                             </h1>
 
-                            <p className="text-lg text-gray-300 line-clamp-3 font-medium max-w-xl leading-relaxed">
+                            <p className="text-base md:text-lg text-gray-300 line-clamp-3 font-medium max-w-full md:max-w-xl leading-relaxed">
                                 {currentMovie.overview}
                             </p>
 
                             <div className="flex items-center gap-4 pt-4">
                                 <Link href={`/watch/${currentMovie.id}${isTv ? '?type=tv' : ''}`}>
-                                    <div className="group relative flex items-center gap-3 rounded-full bg-white px-8 py-3.5 font-bold text-black transition-transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)]">
+                                    <div className="group relative flex items-center gap-3 rounded-full bg-white px-6 py-3 md:px-8 md:py-3.5 font-bold text-black transition-transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)]">
                                         <div className="relative z-10 flex items-center gap-2">
                                             <Play size={20} fill="currentColor" />
                                             <span>Watch Now</span>
@@ -106,9 +106,10 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                                     </div>
                                 </Link>
 
-                                <button className="group flex items-center gap-2 rounded-full bg-white/10 px-6 py-3.5 font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 hover:scale-105 active:scale-95 border border-white/10">
+                                <button className="group flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 md:px-6 md:py-3.5 font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 hover:scale-105 active:scale-95 border border-white/10">
                                     <Info size={20} />
-                                    <span>More Info</span>
+                                    <span className="hidden md:inline">More Info</span>
+                                    <span className="md:hidden">Info</span>
                                 </button>
                             </div>
                         </motion.div>
@@ -117,7 +118,7 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
             </div>
 
             {/* Indicators */}
-            <div className="absolute bottom-36 right-6 md:right-10 z-30 flex gap-2">
+            <div className="absolute bottom-24 md:bottom-36 right-6 md:right-10 z-30 flex gap-2">
                 {movies.map((_, idx) => (
                     <button
                         key={idx}

@@ -64,7 +64,7 @@ export function CategoryGrid({ initialMovies, category, type = 'movie', filters 
 
     return (
         <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
                 {movies.map((movie, idx) => (
                     <MovieCard key={`${movie.id}-${idx}`} movie={movie} index={idx} />
                 ))}

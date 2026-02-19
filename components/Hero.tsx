@@ -13,7 +13,7 @@ export const Hero = () => {
             {/* Logo & Branding */}
             <div className="relative z-10 text-center">
                 <div className="mb-6 flex justify-center">
-                    <KinoLogo fontSize="text-9xl" />
+                    <KinoLogo fontSize="text-6xl md:text-9xl" />
                 </div>
 
 

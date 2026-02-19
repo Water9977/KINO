@@ -13,6 +13,7 @@ export const Navbar = () => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [showProfileCard, setShowProfileCard] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const pathname = usePathname();
@@ -30,6 +31,14 @@ export const Navbar = () => {
             searchInputRef.current.focus();
         }
     }, [isSearchOpen]);
+
+    useEffect(() => {
+        if (isMobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+    }, [isMobileMenuOpen]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,16 +59,25 @@ export const Navbar = () => {
         <>
             <motion.nav
                 className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled
-                    ? "bg-black/60 backdrop-blur-2xl border-b border-white/5 py-3"
+                    ? "bg-black/80 backdrop-blur-2xl border-b border-white/5 py-3"
                     : "bg-gradient-to-b from-black/80 to-transparent py-5"
                     }`}
                 initial={{ y: -100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
             >
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-10 relative">
+                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-6 lg:px-10 relative">
                     {/* Logo Section */}
-                    <div className="flex items-center gap-10">
+                    <div className="flex items-center gap-4 lg:gap-10">
+                        {/* Mobile Menu Button - Left Aligned */}
+                        <button
+                            className="lg:hidden p-2 -ml-2 text-gray-300 hover:text-white transition-colors"
+                            onClick={() => setIsMobileMenuOpen(true)}
+                        >
+                            <User size={24} className="opacity-0 w-0" /> {/* Spacer/Placeholder if needed, or just use Menu */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
+                        </button>
+
                         <Link href="/browse" className="flex items-center gap-2 group z-20 hover:scale-105 transition-transform duration-300">
                             <KinoLogo fontSize="text-2xl md:text-3xl" />
                         </Link>
@@ -81,7 +99,7 @@ export const Navbar = () => {
                     </div>
 
                     {/* Right Actions */}
-                    <div className="flex items-center gap-4 md:gap-6 z-20">
+                    <div className="flex items-center gap-2 md:gap-6 z-20">
                         {/* Search Trigger/Input */}
                         <div className="relative flex items-center">
                             <AnimatePresence mode="wait">
@@ -100,20 +118,20 @@ export const Navbar = () => {
                                     <motion.div
                                         key="search-input"
                                         initial={{ width: 0, opacity: 0 }}
-                                        animate={{ width: "450px", opacity: 1 }}
+                                        animate={{ width: "100%", opacity: 1 }} // Responsive width handled via CSS/JS logic if needed, but here fixed mainly
                                         exit={{ width: 0, opacity: 0 }}
-                                        className="relative flex items-center"
+                                        className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center w-[calc(100vw-120px)] sm:w-[350px] md:w-[450px]"
                                     >
                                         <form onSubmit={handleSearchSubmit} className="w-full">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                             <input
                                                 ref={searchInputRef}
                                                 type="text"
-                                                placeholder="Titles, people, genres..."
+                                                placeholder="Search..."
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 onBlur={() => !searchQuery && setIsSearchOpen(false)}
-                                                className="w-full h-10 rounded-full bg-white/10 border border-white/10 pl-10 pr-10 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#2563eb]/50 focus:bg-black/60 transition-all"
+                                                className="w-full h-10 rounded-full bg-black/90 border border-white/20 pl-10 pr-10 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#2563eb]/50 transition-all"
                                             />
                                             <button
                                                 type="button"
@@ -136,15 +154,78 @@ export const Navbar = () => {
                         </div>
 
                         <div className="relative cursor-pointer" onClick={() => setShowProfileCard(true)}>
-                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-purple-600 p-[1.5px] transition-transform hover:scale-110">
+                            <div className="h-8 w-8 md:h-9 md:w-9 rounded-xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-purple-600 p-[1.5px] transition-transform hover:scale-110">
                                 <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0a0a]">
-                                    <User size={18} className="text-white" />
+                                    <User size={16} className="text-white md:hidden" />
+                                    <User size={18} className="text-white hidden md:block" />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </motion.nav>
+
+            {/* Mobile Menu Overlay */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+                        />
+                        <motion.div
+                            initial={{ x: "-100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "-100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="fixed inset-y-0 left-0 z-50 w-[280px] bg-[#0a0a0a] border-r border-white/10 lg:hidden flex flex-col p-6 shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-8">
+                                <KinoLogo fontSize="text-2xl" />
+                                <button
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <nav className="flex flex-col gap-2">
+                                {navLinks.map((link) => (
+                                    <Link
+                                        key={link.name}
+                                        href={link.href}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`px-4 py-3 rounded-xl text-lg font-medium transition-all duration-200 ${pathname === link.href
+                                            ? "bg-[#2563eb]/10 text-[#2563eb]"
+                                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                                            }`}
+                                    >
+                                        {link.name}
+                                    </Link>
+                                ))}
+                            </nav>
+
+                            <div className="mt-auto pt-6 border-t border-white/5">
+                                <button className="flex w-full items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                                    <div className="relative">
+                                        <Bell size={20} />
+                                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#2563eb] ring-2 ring-[#0a0a0a]" />
+                                    </div>
+                                    <span className="font-medium">Notifications</span>
+                                </button>
+                                <button className="flex w-full items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" onClick={() => { setIsMobileMenuOpen(false); setShowProfileCard(true); }}>
+                                    <User size={20} />
+                                    <span className="font-medium">Profile</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Profile Card Overlay */}
             <AnimatePresence>
