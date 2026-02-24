@@ -97,20 +97,14 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
 
                             <div className="flex items-center gap-4 pt-4">
                                 <Link href={`/watch/${currentMovie.id}${isTv ? '?type=tv' : ''}`}>
-                                    <div className="group relative flex items-center gap-3 rounded-full bg-white px-6 py-3 md:px-8 md:py-3.5 font-bold text-black transition-transform hover:scale-105 active:scale-95 shadow-[0_0_40px_-10px_rgba(255,255,255,0.5)]">
+                                    <div className="group relative flex items-center gap-3 rounded-full bg-white px-6 py-3 md:px-8 md:py-3.5 font-bold text-black transition-all duration-150 hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] active:scale-95">
                                         <div className="relative z-10 flex items-center gap-2">
                                             <Play size={20} fill="currentColor" />
                                             <span>Watch Now</span>
                                         </div>
-                                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-200 to-white opacity-0 transition-opacity group-hover:opacity-100" />
+                                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-200 to-white opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
                                     </div>
                                 </Link>
-
-                                <button className="group flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 md:px-6 md:py-3.5 font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 hover:scale-105 active:scale-95 border border-white/10">
-                                    <Info size={20} />
-                                    <span className="hidden md:inline">More Info</span>
-                                    <span className="md:hidden">Info</span>
-                                </button>
                             </div>
                         </motion.div>
                     </AnimatePresence>

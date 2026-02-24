@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Bell, User, X, Linkedin, Github, Instagram } from "lucide-react";
+import Image from "next/image";
+import { Search, Bell, User, X, Linkedin, Github, Instagram, Sparkles, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import { KinoLogo } from "./ui/KinoLogo";
 import { GlowCard } from "./ui/spotlight-card";
+import ExpandableSearchBar from "./ui/expandable-search-bar";
 
 export const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
@@ -14,6 +16,12 @@ export const Navbar = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [showProfileCard, setShowProfileCard] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [easterEggClicks, setEasterEggClicks] = useState(0);
+    const [showEasterEgg, setShowEasterEgg] = useState(false);
+    const [showNotification, setShowNotification] = useState(false);
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchWidth, setSearchWidth] = useState(450);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const pathname = usePathname();
@@ -22,8 +30,20 @@ export const Navbar = () => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
         };
+        const handleResize = () => {
+            const width = window.innerWidth;
+            if (width < 640) setSearchWidth(Math.max(width - 140, 200));
+            else if (width < 768) setSearchWidth(350);
+            else setSearchWidth(450);
+        };
+
+        handleResize(); // initial set
         window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
+        window.addEventListener("resize", handleResize);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            window.removeEventListener("resize", handleResize);
+        }
     }, []);
 
     useEffect(() => {
@@ -40,12 +60,50 @@ export const Navbar = () => {
         }
     }, [isMobileMenuOpen]);
 
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSuggestions([]);
+            return;
+        }
+
+        const fetchSuggestions = async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+                const data = await res.json();
+                setSuggestions(data.results || []);
+            } catch (error) {
+                console.error("Failed to fetch search suggestions", error);
+            } finally {
+                setIsSearching(false);
+            }
+        };
+
+        const timeoutId = setTimeout(fetchSuggestions, 300);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery]);
+
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (searchQuery.trim()) {
             router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
             setIsSearchOpen(false);
         }
+    };
+
+    const handleNameClick = () => {
+        setEasterEggClicks(prev => {
+            const newCount = prev + 1;
+            if (newCount === 9) {
+                setShowEasterEgg(true);
+                // Reset after the animation completes
+                setTimeout(() => {
+                    setShowEasterEgg(false);
+                }, 3000); // 3 second animation
+                return 0; // reset counter
+            }
+            return newCount;
+        });
     };
 
     const navLinks = [
@@ -100,65 +158,137 @@ export const Navbar = () => {
 
                     {/* Right Actions */}
                     <div className="flex items-center gap-2 md:gap-6 z-20">
-                        {/* Search Trigger/Input */}
-                        <div className="relative flex items-center">
-                            <AnimatePresence mode="wait">
-                                {!isSearchOpen ? (
-                                    <motion.button
-                                        key="search-btn"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        onClick={() => setIsSearchOpen(true)}
-                                        className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                                    >
-                                        <Search size={20} />
-                                    </motion.button>
-                                ) : (
+                        {/* Search Trigger/Input using ExpandableSearchBar */}
+                        <div className="relative flex items-center h-10">
+                            <ExpandableSearchBar
+                                expandDirection="left"
+                                placeholder="Search movies, series..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                open={isSearchOpen}
+                                onOpenChange={setIsSearchOpen}
+                                onBlur={(e) => {
+                                    // Let blur happen, but delay clearing suggestions so click can register
+                                    setTimeout(() => setSuggestions([]), 200);
+                                }}
+                                width={searchWidth}
+                                onSearch={(query) => {
+                                    if (query.trim()) {
+                                        router.push(`/search?q=${encodeURIComponent(query)}`);
+                                        setIsSearchOpen(false);
+                                    }
+                                }}
+                            >
+                                <AnimatePresence>
+                                    {(suggestions.length > 0 || isSearching) && searchQuery && isSearchOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            className="w-full bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+                                        >
+                                            {isSearching ? (
+                                                <div className="flex items-center justify-center p-6 text-gray-400">
+                                                    <Loader2 className="animate-spin" size={20} />
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    {suggestions.map((item) => (
+                                                        <div
+                                                            key={item.id}
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault(); // Prevents input onBlur
+                                                                router.push(`/watch/${item.id}?type=${item.media_type || 'movie'}`);
+                                                                setIsSearchOpen(false);
+                                                                setSearchQuery("");
+                                                                setSuggestions([]);
+                                                            }}
+                                                            className="flex items-center gap-3 p-3 hover:bg-white/10 cursor-pointer transition-colors"
+                                                        >
+                                                            {item.poster_path ? (
+                                                                <img
+                                                                    src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                                                                    alt={item.title || item.name}
+                                                                    className="w-10 h-14 rounded-md object-cover flex-shrink-0"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-10 h-14 rounded-md bg-white/5 flex items-center justify-center flex-shrink-0 text-white/20">
+                                                                    <Search size={16} />
+                                                                </div>
+                                                            )}
+                                                            <div className="flex flex-col flex-1 overflow-hidden">
+                                                                <span className="text-white text-sm font-semibold truncate">
+                                                                    {item.title || item.name}
+                                                                </span>
+                                                                <span className="text-gray-400 text-xs">
+                                                                    {(item.release_date || item.first_air_date)?.split("-")[0] || "N/A"} • {(item.media_type || 'movie').toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            const fakeEvent = { preventDefault: () => { } } as React.FormEvent;
+                                                            handleSearchSubmit(fakeEvent);
+                                                        }}
+                                                        className="p-3 text-center text-xs font-semibold text-[#2563eb] hover:bg-white/5 hover:text-blue-400 mt-1 transition-colors"
+                                                    >
+                                                        See all results for "{searchQuery}"
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </ExpandableSearchBar>
+                        </div>
+
+                        <div className="hidden sm:flex items-center gap-4 relative">
+                            <button
+                                onClick={() => setShowNotification(!showNotification)}
+                                className="relative p-2 text-gray-300 hover:text-white transition-colors group"
+                            >
+                                <Bell size={20} />
+                                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2563eb] ring-2 ring-black animate-pulse" />
+                            </button>
+
+                            <AnimatePresence>
+                                {showNotification && (
                                     <motion.div
-                                        key="search-input"
-                                        initial={{ width: 0, opacity: 0 }}
-                                        animate={{ width: "100%", opacity: 1 }} // Responsive width handled via CSS/JS logic if needed, but here fixed mainly
-                                        exit={{ width: 0, opacity: 0 }}
-                                        className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center w-[calc(100vw-120px)] sm:w-[350px] md:w-[450px]"
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="absolute top-full right-0 mt-4 w-60 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl"
                                     >
-                                        <form onSubmit={handleSearchSubmit} className="w-full">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                                            <input
-                                                ref={searchInputRef}
-                                                type="text"
-                                                placeholder="Search..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                onBlur={() => !searchQuery && setIsSearchOpen(false)}
-                                                className="w-full h-10 rounded-full bg-black/90 border border-white/20 pl-10 pr-10 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#2563eb]/50 transition-all"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => { setIsSearchOpen(false); setSearchQuery(""); }}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </form>
+                                        <div className="flex flex-col gap-2 relative">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-[#2563eb]">
+                                                    <Sparkles size={16} />
+                                                    <span className="text-sm font-bold tracking-tight">Beta Version</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowNotification(false)}
+                                                    className="text-gray-400 hover:text-white transition-colors"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                            <p className="text-xs text-gray-300 leading-relaxed mt-1">
+                                                Welcome to Kino! We are currently in our beta phase. Expect frequent updates and new features.
+                                            </p>
+                                        </div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
                         </div>
 
-                        <div className="hidden sm:flex items-center gap-4">
-                            <button className="relative p-2 text-gray-300 hover:text-white transition-colors group">
-                                <Bell size={20} />
-                                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2563eb] ring-2 ring-black animate-pulse" />
-                            </button>
-                        </div>
-
-                        <div className="relative cursor-pointer" onClick={() => setShowProfileCard(true)}>
-                            <div className="h-8 w-8 md:h-9 md:w-9 rounded-xl bg-gradient-to-br from-[#2563eb] via-[#60a5fa] to-purple-600 p-[1.5px] transition-transform hover:scale-110">
-                                <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#0a0a0a]">
-                                    <User size={16} className="text-white md:hidden" />
-                                    <User size={18} className="text-white hidden md:block" />
-                                </div>
+                        <div className="relative cursor-pointer group" onClick={() => setShowProfileCard(true)}>
+                            <div className="h-8 w-8 md:h-9 md:w-9 rounded-xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/5 shadow-sm flex items-center justify-center transition-all duration-150 group-hover:scale-110 group-hover:bg-[#0a0a0a]/80 group-hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] group-hover:border-[#2563eb]/40">
+                                <User size={16} className="text-white group-hover:text-blue-400 transition-colors duration-150 md:hidden" />
+                                <User size={18} className="text-white group-hover:text-blue-400 transition-colors duration-150 hidden md:block" />
                             </div>
                         </div>
                     </div>
@@ -251,23 +381,8 @@ export const Navbar = () => {
                             >
                                 <div className="flex flex-col h-full items-center justify-center p-6 relative">
                                     <div className="flex flex-col items-center gap-4 mt-2">
-                                        <div className="text-center space-y-1">
-                                            <h2 className="text-3xl font-black tracking-tighter uppercase italic flex items-center justify-center">
-                                                <span className="text-white">KIN</span>
-                                                <motion.span
-                                                    className="text-[#2563eb] drop-shadow-[0_0_15px_rgba(37,99,235,0.6)]"
-                                                    animate={{
-                                                        textShadow: ["0 0 15px rgba(37,99,235,0.4)", "0 0 25px rgba(37,99,235,0.8)", "0 0 15px rgba(37,99,235,0.4)"]
-                                                    }}
-                                                    transition={{
-                                                        duration: 2,
-                                                        repeat: Infinity,
-                                                        ease: "easeInOut"
-                                                    }}
-                                                >
-                                                    O
-                                                </motion.span>
-                                            </h2>
+                                        <div className="text-center space-y-1 flex justify-center items-center">
+                                            <KinoLogo fontSize="text-4xl" />
                                         </div>
 
                                         <div className="flex items-center gap-3">
@@ -297,7 +412,35 @@ export const Navbar = () => {
 
                                     <div className="w-full pt-6">
                                         <p className="text-gray-400 text-xs font-medium text-center flex items-center justify-center gap-1.5 leading-relaxed">
-                                            Made with love <span className="text-blue-500 text-base animate-pulse inline-block">💙</span> by <span className="text-white font-semibold">Siddharth Sharma</span>
+                                            Made with love
+                                            <motion.span
+                                                className={`text-base inline-block ${showEasterEgg ? 'text-[#00ffff]' : 'text-blue-500 animate-pulse'}`}
+                                                animate={showEasterEgg ? {
+                                                    scale: [1, 1.5, 1.8, 1.5, 1],
+                                                    rotate: [0, -10, 10, -10, 0],
+                                                    filter: [
+                                                        "drop-shadow(0 0 0px rgba(0,255,255,0))",
+                                                        "drop-shadow(0 0 20px rgba(0,255,255,0.8))",
+                                                        "drop-shadow(0 0 40px rgba(0,255,255,1))",
+                                                        "drop-shadow(0 0 20px rgba(0,255,255,0.8))",
+                                                        "drop-shadow(0 0 0px rgba(0,255,255,0))"
+                                                    ]
+                                                } : {}}
+                                                transition={showEasterEgg ? {
+                                                    duration: 2.5,
+                                                    ease: "easeInOut"
+                                                } : {}}
+                                            >
+                                                💙
+                                            </motion.span>
+                                            by
+                                            <span
+                                                className="text-white font-semibold cursor-default select-none"
+                                                onClick={handleNameClick}
+                                                style={{ WebkitTapHighlightColor: 'transparent' }} // prevents flashing on mobile
+                                            >
+                                                Siddharth Sharma
+                                            </span>
                                         </p>
                                     </div>
 

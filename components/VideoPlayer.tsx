@@ -11,6 +11,7 @@ interface VideoPlayerProps {
     tmdbId: number;
     mediaType?: 'movie' | 'tv';
     seasons?: any[];
+    isBollywood?: boolean;
 }
 
 // Helper: format seconds → "1h 23m 45s" or "12:34"
@@ -54,10 +55,10 @@ const videoProviders = [
     },
 ];
 
-export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: VideoPlayerProps) => {
+export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [], isBollywood = false }: VideoPlayerProps) => {
     const [hasUserConsent, setHasUserConsent] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [currentServer, setCurrentServer] = useState(0);
+    const [currentServer, setCurrentServer] = useState(isBollywood && mediaType === 'movie' ? 1 : 0);
     const [isLoading, setIsLoading] = useState(true);
 
     // TV Show State
@@ -166,7 +167,7 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [] }: Video
         setHasUserConsent(false);
         setIsPlaying(false);
         setIsLoading(true);
-        setCurrentServer(0);
+        setCurrentServer(isBollywood && mediaType === 'movie' ? 1 : 0);
         setSelectedSeason(1);
         setSelectedEpisode(1);
         currentTimeRef.current = 0;

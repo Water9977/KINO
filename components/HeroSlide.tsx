@@ -66,16 +66,11 @@ export const HeroSlide = ({ movie }: { movie: Movie }) => {
                     {/* Action Buttons */}
                     <div className="flex flex-wrap items-center gap-4">
                         <Link href={`/watch/${movie.id}`}>
-                            <button className="group relative flex items-center gap-2.5 overflow-hidden rounded-full bg-white px-6 py-3 text-sm font-black tracking-wide text-black transition-all duration-500 hover:shadow-[0_0_40px_rgba(96,165,250,0.8)] active:scale-95">
+                            <button className="group relative flex items-center gap-2.5 overflow-hidden rounded-full bg-white px-6 py-3 text-sm font-black tracking-wide text-black transition-all duration-150 hover:shadow-[0_0_40px_rgba(37,99,235,0.8)] active:scale-95">
                                 <Play size={18} fill="currentColor" />
                                 <span className="relative z-10">WATCH NOW</span>
                             </button>
                         </Link>
-
-                        <button className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-white backdrop-blur-xl transition-all duration-500 hover:bg-white/10 hover:border-white/20 active:scale-95">
-                            <Info size={18} />
-                            <span>MORE INFO</span>
-                        </button>
                     </div>
                 </motion.div>
             </div>

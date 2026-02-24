@@ -60,7 +60,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
             <div className="relative z-10 -mt-[40vh] mx-auto max-w-7xl px-6 lg:px-10">
                 <div className="flex flex-col gap-12">
                     {/* Main Header Info */}
-                    <div className="flex flex-col lg:flex-row gap-10 items-end lg:items-center">
+                    <div className="flex flex-col lg:flex-row gap-6 md:gap-10 items-center text-center lg:text-left lg:items-center">
                         {/* Poster with glow */}
                         <div className="hidden lg:block flex-shrink-0">
                             <div className="w-[280px] aspect-[2/3] relative rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-white/10 group">
@@ -83,10 +83,10 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                         {/* Title & Metadata */}
                         <div className="flex-1 space-y-6">
                             <div className="space-y-2">
-                                <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white drop-shadow-2xl font-outfit">
+                                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight text-white drop-shadow-2xl font-outfit break-words">
                                     {title}
                                 </h1>
-                                <div className="flex flex-wrap items-center gap-6 text-[11px] font-black tracking-widest uppercase text-gray-400">
+                                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-6 text-[11px] font-black tracking-widest uppercase text-gray-400">
                                     <span className="flex items-center gap-2 text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/20">
                                         <Star size={14} fill="currentColor" />
                                         {vote_average.toFixed(1)} TMDB
@@ -109,7 +109,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap justify-center lg:justify-start gap-2">
                                 {genres?.map((g: any) => (
                                     <span key={g.id} className="rounded-xl bg-[#2563eb]/10 border border-[#2563eb]/20 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#2563eb]">
                                         {g.name}
@@ -125,6 +125,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                             tmdbId={Number(id)}
                             mediaType={mediaType}
                             seasons={mediaType === 'tv' ? movie.seasons : undefined}
+                            isBollywood={movie.original_language === 'hi' || movie.production_countries?.some((c: any) => c.iso_3166_1 === 'IN')}
                         />
                     </div>
 
@@ -137,7 +138,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                 <div className="h-1.5 w-16 bg-[#2563eb] rounded-full" />
                                 <h2 className="text-3xl font-black tracking-tight uppercase">STORYLINE</h2>
                             </div>
-                            <p className="text-xl leading-relaxed text-gray-400 font-medium max-w-3xl mx-auto">
+                            <p className="text-lg md:text-xl leading-relaxed text-gray-400 font-medium max-w-3xl mx-auto">
                                 {overview || "No detailed synopsis available for this title."}
                             </p>
                         </div>
@@ -153,7 +154,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                 {cast?.map((actor: any) => (
                                     <div
                                         key={actor.id}
-                                        className="bg-[#151515] border border-white/5 rounded-2xl p-3 flex items-center gap-4 transition-all hover:border-[#2563eb]/30 hover:bg-[#2563eb]/5 group min-w-[240px] max-w-[280px]"
+                                        className="bg-[#151515] border border-white/5 rounded-2xl p-3 flex items-center gap-4 transition-all hover:border-[#2563eb]/30 hover:bg-[#2563eb]/5 group w-full sm:w-auto sm:min-w-[240px] max-w-[280px]"
                                     >
                                         <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 relative shadow-xl">
                                             {actor.profile_path ? (

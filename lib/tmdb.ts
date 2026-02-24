@@ -82,8 +82,33 @@ export const TMDB = {
     },
 
     search: async (query: string) => {
-        const res = await fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
-        return res.json();
+        const encodedQuery = encodeURIComponent(query);
+
+        try {
+            const [movieRes, tvRes] = await Promise.all([
+                fetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`),
+                fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`)
+            ]);
+
+            const [movieData, tvData] = await Promise.all([
+                movieRes.json(),
+                tvRes.json()
+            ]);
+
+            const movies = (movieData.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+            const tvShows = (tvData.results || []).map((t: any) => ({ ...t, media_type: 'tv' }));
+
+            const combined = [...movies, ...tvShows].sort((a, b) => {
+                const popA = a.popularity || 0;
+                const popB = b.popularity || 0;
+                return popB - popA; // Descending order
+            });
+
+            return { results: combined };
+        } catch (error) {
+            console.error("Search API offset error:", error);
+            return { results: [] };
+        }
     },
 
     getDetails: async (id: string, type: 'movie' | 'tv' = 'movie') => {
