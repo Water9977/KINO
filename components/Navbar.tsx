@@ -179,8 +179,11 @@ export const Navbar = () => {
                                 width={searchWidth}
                                 onSearch={(query) => {
                                     if (query.trim()) {
+                                        // Dismiss keyboard before navigating
+                                        (document.activeElement as HTMLElement)?.blur();
                                         router.push(`/search?q=${encodeURIComponent(query)}`);
                                         setIsSearchOpen(false);
+                                        setSuggestions([]);
                                     }
                                 }}
                             >
@@ -203,6 +206,8 @@ export const Navbar = () => {
                                                             key={item.id}
                                                             onMouseDown={(e) => {
                                                                 e.preventDefault(); // Prevents input onBlur
+                                                                // Dismiss keyboard before navigating
+                                                                (document.activeElement as HTMLElement)?.blur();
                                                                 router.push(`/watch/${item.id}?type=${item.media_type || 'movie'}`);
                                                                 setIsSearchOpen(false);
                                                                 setSearchQuery("");

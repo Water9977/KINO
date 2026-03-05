@@ -72,6 +72,8 @@ export default function ExpandableSearchBar(props: ExpandableSearchBarProps) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // Dismiss keyboard on mobile before navigating
+        inputRef.current?.blur();
         onSearch?.(value);
     };
 
