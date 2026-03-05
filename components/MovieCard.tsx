@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Star, Play, Calendar } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { hapticLight } from "@/lib/haptics";
 
 export interface Movie {
     id: number;
@@ -39,7 +40,7 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
             transition={{ delay: (index % 6) * 0.1, duration: 0.5 }}
             className="group relative flex flex-col gap-3 rounded-2xl p-2 transition-all duration-500 hover:bg-white/5 active:scale-95"
         >
-            <Link href={linkHref} className="relative block w-full">
+            <Link href={linkHref} className="relative block w-full" onClick={hapticLight}>
                 <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-kino-surface ring-1 ring-white/5 transition-all duration-500 group-hover:ring-[#2563eb]/50 group-hover:shadow-[0_20px_40px_-10px_rgba(37,99,235,0.3)]">
                     <Image
                         src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}

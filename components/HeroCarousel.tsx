@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Info, Play, Star, Calendar } from "lucide-react";
 import { Movie } from "./MovieCard";
+import { hapticMedium, hapticTick } from "@/lib/haptics";
 
 interface HeroCarouselProps {
     movies: Movie[];
@@ -13,6 +14,7 @@ interface HeroCarouselProps {
 
 export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
     // Auto-advance
     useEffect(() => {
@@ -22,6 +24,21 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
         return () => clearInterval(timer);
     }, [movies.length]);
 
+    // Detect mobile virtual keyboard via visualViewport API.
+    // When keyboard opens, visualViewport.height drops significantly.
+    useEffect(() => {
+        const vv = window.visualViewport;
+        if (!vv) return;
+
+        const handleViewportResize = () => {
+            const diff = window.innerHeight - vv.height;
+            setIsKeyboardOpen(diff > 150);
+        };
+
+        vv.addEventListener("resize", handleViewportResize);
+        return () => vv.removeEventListener("resize", handleViewportResize);
+    }, []);
+
     if (!movies || movies.length === 0) return null;
 
     const currentMovie = movies[currentIndex];
@@ -29,9 +46,6 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
     const title = currentMovie.title || currentMovie.name || "Unknown Title";
     const date = currentMovie.release_date || currentMovie.first_air_date;
     const year = date?.split('-')[0] || "N/A";
-
-    // We don't have detailed info like 'Seasons' in standard list response, so we omit specific pills requiring that unless we fetch details.
-    // For now, will use Rating and Year.
 
     return (
         <div className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden">
@@ -71,8 +85,16 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                             transition={{ duration: 0.5 }}
                             className="space-y-4"
                         >
-                            {/* Meta Pills */}
-                            <div className="flex items-center gap-3">
+                            {/* Meta Pills — fade+collapse when keyboard is open */}
+                            <motion.div
+                                animate={{
+                                    opacity: isKeyboardOpen ? 0 : 1,
+                                    height: isKeyboardOpen ? 0 : "auto",
+                                    marginBottom: isKeyboardOpen ? 0 : undefined,
+                                }}
+                                transition={{ duration: 0.25 }}
+                                className="flex items-center gap-3 overflow-hidden"
+                            >
                                 <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold backdrop-blur-md border border-white/10 text-yellow-400 text-sm">
                                     <Star size={14} fill="currentColor" />
                                     <span>{currentMovie.vote_average?.toFixed(1)}</span>
@@ -84,19 +106,42 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                                 <div className="rounded-full bg-white/10 px-3 py-1 font-medium backdrop-blur-md border border-white/10 text-white uppercase text-[10px] md:text-xs tracking-wider">
                                     {isTv ? 'Series' : 'Movie'}
                                 </div>
-                            </div>
+                            </motion.div>
 
-                            {/* Title */}
-                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1] max-w-full md:max-w-3xl">
+                            {/* Title — scales down when keyboard opens */}
+                            <motion.h1
+                                animate={{
+                                    fontSize: isKeyboardOpen ? "1.5rem" : undefined,
+                                    lineHeight: isKeyboardOpen ? "1.2" : undefined,
+                                }}
+                                transition={{ duration: 0.25, ease: "easeOut" }}
+                                className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1] max-w-full md:max-w-3xl"
+                            >
                                 {title}
-                            </h1>
+                            </motion.h1>
 
-                            <p className="text-base md:text-lg text-gray-300 line-clamp-3 font-medium max-w-full md:max-w-xl leading-relaxed">
+                            {/* Overview — fades out and collapses when keyboard opens */}
+                            <motion.p
+                                animate={{
+                                    opacity: isKeyboardOpen ? 0 : 1,
+                                    height: isKeyboardOpen ? 0 : "auto",
+                                }}
+                                transition={{ duration: 0.25 }}
+                                className="text-base md:text-lg text-gray-300 line-clamp-3 font-medium max-w-full md:max-w-xl leading-relaxed overflow-hidden"
+                            >
                                 {currentMovie.overview}
-                            </p>
+                            </motion.p>
 
-                            <div className="flex items-center gap-4 pt-4">
-                                <Link href={`/watch/${currentMovie.id}${isTv ? '?type=tv' : ''}`}>
+                            {/* Watch Now — slightly compresses when keyboard open */}
+                            <motion.div
+                                animate={{
+                                    scale: isKeyboardOpen ? 0.88 : 1,
+                                    opacity: isKeyboardOpen ? 0.75 : 1,
+                                }}
+                                transition={{ duration: 0.25 }}
+                                className="flex items-center gap-4 pt-4 origin-left"
+                            >
+                                <Link href={`/watch/${currentMovie.id}${isTv ? '?type=tv' : ''}`} onClick={hapticMedium}>
                                     <div className="group relative flex items-center gap-3 rounded-full bg-white px-6 py-3 md:px-8 md:py-3.5 font-bold text-black transition-all duration-150 hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] active:scale-95">
                                         <div className="relative z-10 flex items-center gap-2">
                                             <Play size={20} fill="currentColor" />
@@ -105,7 +150,7 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                                         <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-200 to-white opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
                                     </div>
                                 </Link>
-                            </div>
+                            </motion.div>
                         </motion.div>
                     </AnimatePresence>
                 </div>
@@ -116,7 +161,7 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                 {movies.map((_, idx) => (
                     <button
                         key={idx}
-                        onClick={() => setCurrentIndex(idx)}
+                        onClick={() => { hapticTick(); setCurrentIndex(idx); }}
                         className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? "w-8 bg-white" : "w-1.5 bg-white/20 hover:bg-white/40"
                             }`}
                     />

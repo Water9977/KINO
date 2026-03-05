@@ -9,6 +9,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { KinoLogo } from "./ui/KinoLogo";
 import { GlowCard } from "./ui/spotlight-card";
 import ExpandableSearchBar from "./ui/expandable-search-bar";
+import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticHeartbeat, hapticTick } from "@/lib/haptics";
 
 export const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
@@ -19,6 +20,7 @@ export const Navbar = () => {
     const [easterEggClicks, setEasterEggClicks] = useState(0);
     const [showEasterEgg, setShowEasterEgg] = useState(false);
     const [showNotification, setShowNotification] = useState(false);
+    const [showMobileNotificationCard, setShowMobileNotificationCard] = useState(false);
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchWidth, setSearchWidth] = useState(450);
@@ -32,8 +34,9 @@ export const Navbar = () => {
         };
         const handleResize = () => {
             const width = window.innerWidth;
-            if (width < 640) setSearchWidth(Math.max(width - 140, 200));
-            else if (width < 768) setSearchWidth(350);
+            if (width < 400) setSearchWidth(Math.max(width - 150, 200));
+            else if (width < 640) setSearchWidth(250);
+            else if (width < 768) setSearchWidth(320);
             else setSearchWidth(450);
         };
 
@@ -96,12 +99,15 @@ export const Navbar = () => {
             const newCount = prev + 1;
             if (newCount === 9) {
                 setShowEasterEgg(true);
+                hapticHeartbeat();
                 // Reset after the animation completes
                 setTimeout(() => {
                     setShowEasterEgg(false);
                 }, 3000); // 3 second animation
                 return 0; // reset counter
             }
+            // Tiny tick on each tap leading up to the easter egg
+            hapticTick();
             return newCount;
         });
     };
@@ -129,10 +135,9 @@ export const Navbar = () => {
                     <div className="flex items-center gap-4 lg:gap-10">
                         {/* Mobile Menu Button - Left Aligned */}
                         <button
-                            className="lg:hidden p-2 -ml-2 text-gray-300 hover:text-white transition-colors"
-                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="lg:hidden p-2 -ml-2 text-gray-300 hover:text-white transition-colors flex items-center justify-center"
+                            onClick={() => { hapticMedium(); setIsMobileMenuOpen(true); }}
                         >
-                            <User size={24} className="opacity-0 w-0" /> {/* Spacer/Placeholder if needed, or just use Menu */}
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
                         </button>
 
@@ -247,7 +252,7 @@ export const Navbar = () => {
 
                         <div className="hidden sm:flex items-center gap-4 relative">
                             <button
-                                onClick={() => setShowNotification(!showNotification)}
+                                onClick={() => { hapticLight(); setShowNotification(!showNotification); }}
                                 className="relative p-2 text-gray-300 hover:text-white transition-colors group"
                             >
                                 <Bell size={20} />
@@ -285,10 +290,10 @@ export const Navbar = () => {
                             </AnimatePresence>
                         </div>
 
-                        <div className="relative cursor-pointer group" onClick={() => setShowProfileCard(true)}>
-                            <div className="h-8 w-8 md:h-9 md:w-9 rounded-xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/5 shadow-sm flex items-center justify-center transition-all duration-150 group-hover:scale-110 group-hover:bg-[#0a0a0a]/80 group-hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] group-hover:border-[#2563eb]/40">
-                                <User size={16} className="text-white group-hover:text-blue-400 transition-colors duration-150 md:hidden" />
-                                <User size={18} className="text-white group-hover:text-blue-400 transition-colors duration-150 hidden md:block" />
+                        {/* Profile icon — desktop only; mobile uses the menu drawer */}
+                        <div className="relative cursor-pointer group hidden sm:flex" onClick={() => { hapticLight(); setShowProfileCard(true); }}>
+                            <div className="h-10 w-10 rounded-xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/5 shadow-sm flex items-center justify-center transition-all duration-150 group-hover:scale-110 group-hover:bg-[#0a0a0a]/80 group-hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] group-hover:border-[#2563eb]/40">
+                                <User size={18} className="text-white group-hover:text-blue-400 transition-colors duration-150" />
                             </div>
                         </div>
                     </div>
@@ -316,7 +321,7 @@ export const Navbar = () => {
                             <div className="flex items-center justify-between mb-8">
                                 <KinoLogo fontSize="text-2xl" />
                                 <button
-                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    onClick={() => { hapticLight(); setIsMobileMenuOpen(false); }}
                                     className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
                                 >
                                     <X size={20} />
@@ -328,7 +333,7 @@ export const Navbar = () => {
                                     <Link
                                         key={link.name}
                                         href={link.href}
-                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        onClick={() => { hapticSuccess(); setIsMobileMenuOpen(false); }}
                                         className={`px-4 py-3 rounded-xl text-lg font-medium transition-all duration-200 ${pathname === link.href
                                             ? "bg-[#2563eb]/10 text-[#2563eb]"
                                             : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -340,20 +345,68 @@ export const Navbar = () => {
                             </nav>
 
                             <div className="mt-auto pt-6 border-t border-white/5">
-                                <button className="flex w-full items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                                <button
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                                    onClick={() => { hapticLight(); setIsMobileMenuOpen(false); setShowMobileNotificationCard(true); }}
+                                >
                                     <div className="relative">
                                         <Bell size={20} />
                                         <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#2563eb] ring-2 ring-[#0a0a0a]" />
                                     </div>
                                     <span className="font-medium">Notifications</span>
                                 </button>
-                                <button className="flex w-full items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" onClick={() => { setIsMobileMenuOpen(false); setShowProfileCard(true); }}>
+                                <button className="flex w-full items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" onClick={() => { hapticLight(); setIsMobileMenuOpen(false); setShowProfileCard(true); }}>
                                     <User size={20} />
                                     <span className="font-medium">Profile</span>
                                 </button>
                             </div>
                         </motion.div>
                     </>
+                )}
+            </AnimatePresence>
+
+            {/* Mobile Notification Card Overlay */}
+            <AnimatePresence>
+                {showMobileNotificationCard && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 lg:hidden">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowMobileNotificationCard(false)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative z-10 w-full max-w-sm"
+                        >
+                            <GlowCard
+                                customSize={true}
+                                glowColor="blue"
+                                className="!w-full !bg-black/40 border-white/5 shadow-2xl overflow-hidden"
+                            >
+                                <div className="flex flex-col relative p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2 text-[#2563eb]">
+                                            <Sparkles size={20} />
+                                            <span className="text-lg font-bold tracking-tight">Beta Version</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { hapticLight(); setShowMobileNotificationCard(false); }}
+                                            className="text-gray-400 hover:text-white transition-colors p-2 -mr-2 -mt-2"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <p className="text-sm text-gray-300 leading-relaxed">
+                                        Welcome to Kino! We are currently in our beta phase. Expect frequent updates and new features.
+                                    </p>
+                                </div>
+                            </GlowCard>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 

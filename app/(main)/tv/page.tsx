@@ -28,7 +28,7 @@ export default async function TVShowsPage() {
             {/* Hero Section */}
             <HeroCarousel movies={trending.results?.slice(0, 8) || []} />
 
-            <div className="relative z-20 -mt-32 pb-20 space-y-8 bg-gradient-to-b from-transparent to-[#0a0a0a]">
+            <div className="relative z-20 -mt-8 md:-mt-32 pb-20 space-y-8 bg-gradient-to-b from-transparent to-[#0a0a0a]">
 
                 <MovieRow
                     title="Popular Series"
