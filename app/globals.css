@@ -105,3 +105,58 @@
         background: #3b82f6;
     }
 }
+
+/* ─── Mobile Performance Optimizations ─────────────────────────────────────── */
+
+/* Promote fixed navbar to its own GPU compositing layer — prevents repaints
+   on scroll triggering full-page redraws */
+nav.fixed {
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+/* On mobile, replace expensive backdrop-blur with solid equivalents.
+   backdrop-blur forces the GPU to sample, blur, and composite every frame —
+   on mobile this is the #1 cause of dropped frames / jank. */
+@media (max-width: 768px) {
+
+    /* Navbar backdrop — solid instead of blurred */
+    [class*="backdrop-blur"] {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    /* Give the navbar, modals a solid dark bg instead */
+    nav.fixed {
+        background-color: rgba(10, 10, 10, 0.97) !important;
+    }
+
+    /* Smooth momentum scrolling on iOS */
+    html,
+    body {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: none;
+    }
+
+    /* Use hardware-accelerated scrolling for movie rows */
+    [class*="overflow-x-auto"] {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+}
+
+/* Reduce animation complexity for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Prevent layout thrash from font loading */
+html {
+    font-display: swap;
+    text-rendering: optimizeSpeed;
+}
