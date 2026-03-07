@@ -63,6 +63,11 @@
         @apply bg-white/5 backdrop-blur-xl border border-white/10;
     }
 
+    /* Hero pill badge */
+    .hero-pill {
+        @apply flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-sm border border-white/10;
+    }
+
     .glass-dark {
         @apply bg-black/40 backdrop-blur-xl border border-white/5;
     }
@@ -116,6 +121,32 @@
     }
 }
 
+/* ─── Mobile Tab Bar ──────────────────────────────────────────────────────── */
+
+.mobile-tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    /* Safe area insets for notched iPhones */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Solid dark glass — avoids expensive backdrop-filter on mobile */
+    background-color: rgba(8, 8, 12, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    /* GPU layer promotion */
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+/* On desktop with decent GPU allow backdrop blur */
+@media (min-width: 768px) {
+    .mobile-tab-bar {
+        display: none !important;
+    }
+}
+
 /* ─── Mobile Performance Optimizations ─────────────────────────────────────── */
 
 /* Promote fixed navbar to its own GPU compositing layer — prevents repaints
@@ -137,7 +168,7 @@ nav.fixed {
         backdrop-filter: none !important;
     }
 
-    /* Give the navbar, modals a solid dark bg instead */
+    /* Give the navbar a solid dark bg instead */
     nav.fixed {
         background-color: rgba(10, 10, 10, 0.97) !important;
     }
@@ -153,6 +184,28 @@ nav.fixed {
     [class*="overflow-x-auto"] {
         -webkit-overflow-scrolling: touch;
         scroll-behavior: smooth;
+    }
+
+    /* Promote all animated elements to own GPU layer — prevents repaint cascade */
+    [data-framer-motion],
+    [style*="will-change"] {
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+
+    /* Reduce image decode overhead — let browser be lazy outside the hero */
+    img:not([fetchpriority="high"]):not([priority]) {
+        content-visibility: auto;
+    }
+
+    /* Contain layout and paint for card rows */
+    .movie-row-container {
+        contain: layout style;
+    }
+
+    /* Prevent expensive text decorations during scroll */
+    * {
+        text-decoration-skip-ink: none;
     }
 }
 

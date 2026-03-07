@@ -2,6 +2,7 @@ import { TMDB } from "@/lib/tmdb";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import Image from "next/image";
 import { Star, Calendar, Clock, User, Film, Info } from "lucide-react";
+import { MovieRow } from "@/components/MovieRow";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -33,159 +34,156 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
     const release_date = movie.release_date || movie.first_air_date;
     const runtime = movie.runtime || (movie.episode_run_time ? movie.episode_run_time[0] : 0);
 
-    const { overview, backdrop_path, poster_path, vote_average, genres, credits } = movie;
+    const { overview, backdrop_path, poster_path, vote_average, genres, credits, similar, recommendations } = movie;
     const director = credits?.crew?.find((person: any) => person.job === "Director" || person.job === "Executive Producer")?.name;
-    const cast = credits?.cast?.slice(0, 8);
+    const cast = credits?.cast?.slice(0, 12) || [];
+
+    // Prefer recommendations (user-based) over similar (keyword/genre-based) for better relevance
+    const similarTitles = recommendations?.results?.length > 0
+        ? recommendations.results.slice(0, 10)
+        : similar?.results?.slice(0, 10) || [];
 
     return (
-        <main className="min-h-screen bg-[#0a0a0a] text-white pb-32">
+        <main className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden">
+            {/* Background Ambilight Glow - CSS Radial Gradients for 60fps Mobile Performance */}
+            <div className="absolute top-0 inset-x-0 h-[80vh] pointer-events-none opacity-30 z-0 mt-16 md:mt-20">
+                <div className="absolute top-0 left-1/4 w-[70vw] lg:w-[50vw] h-[50vh] animate-pulse-slow"
+                    style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.4) 0%, rgba(37,99,235,0) 70%)' }} />
+                <div className="absolute top-20 right-1/4 w-[60vw] lg:w-[40vw] h-[40vh] animate-pulse-slow"
+                    style={{ background: 'radial-gradient(circle, rgba(147,51,234,0.4) 0%, rgba(147,51,234,0) 70%)', animationDelay: '2s' }} />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/80 to-[#050505]" />
+            </div>
 
-            {/* Immersive Cinematic Backdrop */}
-            <div className="relative h-[70vh] w-full overflow-hidden">
-                <div className="absolute inset-0">
-                    <Image
-                        src={`https://image.tmdb.org/t/p/original${backdrop_path}`}
-                        alt={title}
-                        fill
-                        className="object-cover opacity-30 scale-105 blur-[2px]"
-                        priority
+            {/* Video Player Content Area */}
+            <div className="relative z-10 w-full pt-24 sm:pt-28 md:pt-32 lg:pt-36">
+                <div className="mx-auto w-full max-w-5xl lg:max-w-[1000px] xl:max-w-6xl px-4 md:px-6 lg:px-10">
+                    <VideoPlayer
+                        tmdbId={Number(id)}
+                        mediaType={mediaType}
+                        seasons={mediaType === 'tv' ? movie.seasons : undefined}
+                        isBollywood={movie.original_language === 'hi' || movie.production_countries?.some((c: any) => c.iso_3166_1 === 'IN')}
+                        backdropPath={backdrop_path}
+                        title={title}
                     />
-                    {/* Atmospheric Overlays */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
-                    <div className="absolute inset-0 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]" />
                 </div>
             </div>
 
-            <div className="relative z-10 -mt-[40vh] mx-auto max-w-7xl px-6 lg:px-10">
-                <div className="flex flex-col gap-12">
-                    {/* Main Header Info */}
-                    <div className="flex flex-col lg:flex-row gap-6 md:gap-10 items-center text-center lg:text-left lg:items-center">
-                        {/* Poster with glow */}
-                        <div className="hidden lg:block flex-shrink-0">
-                            <div className="w-[280px] aspect-[2/3] relative rounded-3xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-white/10 group">
-                                {poster_path ? (
-                                    <Image
-                                        src={`https://image.tmdb.org/t/p/w500${poster_path}`}
-                                        alt={title}
-                                        fill
-                                        className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                        unoptimized
-                                    />
-                                ) : (
-                                    <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                                        <Film size={48} className="text-gray-700" />
-                                    </div>
+            {/* Movie Details Section */}
+            <div className="relative z-10 mx-auto max-w-[1600px] px-4 md:px-6 lg:px-10 mt-8 mb-16">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+                    {/* Left Column: Title, Metadata, Overview */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <div className="space-y-4">
+                            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white font-outfit drop-shadow-lg">
+                                {title}
+                            </h1>
+
+                            <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs font-bold tracking-widest uppercase text-gray-400">
+                                <span className="flex items-center gap-1.5 text-yellow-400 bg-yellow-400/10 px-3 py-1.5 rounded-lg border border-yellow-400/20">
+                                    <Star size={14} fill="currentColor" />
+                                    {vote_average ? vote_average.toFixed(1) : 'NR'} TMDB
+                                </span>
+                                <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 text-white">
+                                    <Calendar size={14} className="text-[#2563eb]" />
+                                    {release_date?.split("-")[0] || 'TBA'}
+                                </span>
+                                {runtime > 0 && (
+                                    <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 text-white">
+                                        <Clock size={14} className="text-[#2563eb]" />
+                                        {formatRuntime(runtime)}
+                                    </span>
                                 )}
-                            </div>
-                        </div>
-
-                        {/* Title & Metadata */}
-                        <div className="flex-1 space-y-6">
-                            <div className="space-y-2">
-                                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight text-white drop-shadow-2xl font-outfit break-words">
-                                    {title}
-                                </h1>
-                                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-6 text-[11px] font-black tracking-widest uppercase text-gray-400">
-                                    <span className="flex items-center gap-2 text-yellow-500 bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/20">
-                                        <Star size={14} fill="currentColor" />
-                                        {vote_average.toFixed(1)} TMDB
-                                    </span>
-                                    <span className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-                                        <Calendar size={14} />
-                                        {release_date?.split("-")[0]}
-                                    </span>
-                                    {runtime > 0 && (
-                                        <span className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-                                            <Clock size={14} />
-                                            {runtime} MIN
-                                        </span>
-                                    )}
-                                    {director && (
-                                        <span className="text-[#2563eb] font-black font-sans">
-                                            DIRECTOR: {director}
-                                        </span>
-                                    )}
-                                </div>
+                                <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 text-white">
+                                    <Film size={14} className="text-[#2563eb]" />
+                                    {mediaType === 'tv' ? 'TV SERIES' : 'MOVIE'}
+                                </span>
                             </div>
 
-                            <div className="flex flex-wrap justify-center lg:justify-start gap-2">
+                            <div className="flex flex-wrap gap-2 pt-2">
                                 {genres?.map((g: any) => (
-                                    <span key={g.id} className="rounded-xl bg-[#2563eb]/10 border border-[#2563eb]/20 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#2563eb]">
+                                    <span key={g.id} className="rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-300">
                                         {g.name}
                                     </span>
                                 ))}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Movie Player - Central Component */}
-                    <div className="w-full">
-                        <VideoPlayer
-                            tmdbId={Number(id)}
-                            mediaType={mediaType}
-                            seasons={mediaType === 'tv' ? movie.seasons : undefined}
-                            isBollywood={movie.original_language === 'hi' || movie.production_countries?.some((c: any) => c.iso_3166_1 === 'IN')}
-                        />
-                    </div>
-
-                    {/* Content Details - Centered Layout */}
-                    <div className="flex flex-col items-center gap-24 py-12">
-
-                        {/* Synopsis - Centered and Focused */}
-                        <div className="max-w-4xl w-full space-y-8 text-center">
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="h-1.5 w-16 bg-[#2563eb] rounded-full" />
-                                <h2 className="text-3xl font-black tracking-tight uppercase">STORYLINE</h2>
-                            </div>
-                            <p className="text-lg md:text-xl leading-relaxed text-gray-400 font-medium max-w-3xl mx-auto">
+                        <div className="prose prose-invert max-w-none">
+                            <p className="text-base md:text-lg leading-relaxed text-gray-400 font-medium">
                                 {overview || "No detailed synopsis available for this title."}
                             </p>
                         </div>
 
-                        {/* Cast - Scattered Tiles Below */}
-                        <div className="w-full space-y-12">
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="h-1.5 w-16 bg-purple-600 rounded-full" />
-                                <h2 className="text-3xl font-black tracking-tight uppercase">THE CAST</h2>
+                        {director && (
+                            <div className="flex items-center gap-3 pt-2">
+                                <div className="w-10 h-10 rounded-full bg-[#2563eb]/20 flex items-center justify-center text-[#2563eb]">
+                                    <User size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Director</p>
+                                    <p className="text-sm font-black text-white">{director}</p>
+                                </div>
                             </div>
-
-                            <div className="flex flex-wrap justify-center gap-6 max-w-6xl mx-auto">
-                                {cast?.map((actor: any) => (
-                                    <div
-                                        key={actor.id}
-                                        className="bg-[#151515] border border-white/5 rounded-2xl p-3 flex items-center gap-4 transition-all hover:border-[#2563eb]/30 hover:bg-[#2563eb]/5 group w-full sm:w-auto sm:min-w-[240px] max-w-[280px]"
-                                    >
-                                        <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-white/10 relative shadow-xl">
-                                            {actor.profile_path ? (
-                                                <Image
-                                                    src={`https://image.tmdb.org/t/p/w200${actor.profile_path}`}
-                                                    alt={actor.name}
-                                                    fill
-                                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                                                />
-                                            ) : (
-                                                <div className="flex h-full w-full items-center justify-center bg-gray-900">
-                                                    <User size={20} className="text-gray-700" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0 pr-2">
-                                            <p className="text-sm font-black text-white group-hover:text-[#2563eb] transition-colors truncate uppercase tracking-wide">
-                                                {actor.name}
-                                            </p>
-                                            <p className="text-[10px] text-gray-500 font-bold truncate uppercase tracking-widest mt-0.5">
-                                                {actor.character}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        )}
                     </div>
+
                 </div>
             </div>
+
+            {/* Cast Section - Horizontal Scroll */}
+            {cast.length > 0 && (
+                <div className="relative z-10 w-full pb-16">
+                    <div className="px-4 md:px-6 lg:px-10 max-w-[1600px] mx-auto mb-6 flex items-center gap-3">
+                        <div className="h-6 w-1.5 bg-[#2563eb] rounded-full" />
+                        <h2 className="text-2xl font-black tracking-tight text-white font-outfit uppercase">The Cast</h2>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto px-4 md:px-6 lg:px-10 pb-8 no-scrollbar scroll-smooth">
+                        {cast.map((actor: any) => (
+                            <div key={actor.id} className="min-w-[120px] w-[120px] md:min-w-[140px] md:w-[140px] flex-shrink-0 group cursor-pointer">
+                                <div className="aspect-[2/3] w-full relative rounded-2xl overflow-hidden bg-[#111] mb-3 border border-white/5 group-hover:border-[#2563eb]/50 transition-colors">
+                                    {actor.profile_path ? (
+                                        <Image
+                                            src={`https://image.tmdb.org/t/p/w300${actor.profile_path}`}
+                                            alt={actor.name}
+                                            fill
+                                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-[#111]">
+                                            <User size={32} className="text-gray-700" />
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                </div>
+                                <h4 className="text-sm font-bold text-white truncate group-hover:text-[#2563eb] transition-colors">{actor.name}</h4>
+                                <p className="text-[11px] text-gray-500 font-medium truncate">{actor.character}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Similar Titles */}
+            {similarTitles.length > 0 && (
+                <div className="relative z-10">
+                    <div className="px-0 md:px-0 lg:px-0 max-w-[1600px] mx-auto">
+                        <MovieRow
+                            title={`Similar to ${title}`}
+                            movies={similarTitles}
+                        />
+                    </div>
+                </div>
+            )}
+
         </main>
     );
+}
+
+// Helper block for formatting
+function formatRuntime(minutes: number) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h > 0 ? `${h}H ` : ''}${m}M`;
 }
 

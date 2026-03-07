@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/Navbar";
+import { MobileTabBar } from "@/components/MobileTabBar";
 
 export default function MainLayout({
     children,
@@ -11,6 +12,8 @@ export default function MainLayout({
             <main className="relative z-0">
                 {children}
             </main>
+            {/* Floating bottom nav — mobile only, hidden on md+ via CSS */}
+            <MobileTabBar />
         </div>
     );
 }

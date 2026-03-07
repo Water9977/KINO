@@ -12,6 +12,8 @@ interface VideoPlayerProps {
     mediaType?: 'movie' | 'tv';
     seasons?: any[];
     isBollywood?: boolean;
+    backdropPath?: string;
+    title?: string;
 }
 
 // Helper: format seconds → "1h 23m 45s" or "12:34"
@@ -55,7 +57,7 @@ const videoProviders = [
     },
 ];
 
-export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [], isBollywood = false }: VideoPlayerProps) => {
+export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [], isBollywood = false, backdropPath, title }: VideoPlayerProps) => {
     const [hasUserConsent, setHasUserConsent] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentServer, setCurrentServer] = useState(isBollywood && mediaType === 'movie' ? 1 : 0);
@@ -235,18 +237,28 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [], isBolly
             <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl shadow-[#2563eb]/10 border border-white/5 group ring-1 ring-white/10">
                 {!hasUserConsent ? (
                     // Initial Consent Screen
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 overflow-hidden">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-20 overflow-hidden">
+                        {backdropPath && (
+                            <Image
+                                src={`https://image.tmdb.org/t/p/original${backdropPath}`}
+                                alt={title || "Backdrop"}
+                                fill
+                                className="object-cover opacity-40 group-hover:opacity-30 transition-opacity duration-700 blur-[2px]"
+                            />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
                         <div className="relative z-10 flex flex-col items-center">
                             <button
                                 onClick={handleStartStreaming}
-                                className="group relative flex items-center justify-center transition-all duration-500 hover:scale-110"
+                                className="group/btn relative flex items-center justify-center transition-all duration-500 hover:scale-110"
                             >
+                                <div className="absolute inset-0 bg-[#2563eb] rounded-full blur-2xl opacity-0 group-hover/btn:opacity-60 transition-opacity duration-500" />
                                 <Play
-                                    size={64}
-                                    className="text-white fill-white transition-all duration-500 drop-shadow-[0_0_0_rgba(37,99,235,0)] group-hover:drop-shadow-[0_0_30px_rgba(37,99,235,0.8)]"
+                                    size={72}
+                                    className="text-white fill-white transition-all duration-500 drop-shadow-[0_0_0_rgba(37,99,235,0)] group-hover/btn:drop-shadow-[0_0_30px_rgba(37,99,235,0.8)] relative z-10"
                                 />
                             </button>
-                            <p className="mt-6 text-gray-500 font-medium text-sm tracking-widest uppercase">Click to Stream</p>
+                            <p className="mt-8 text-gray-400 font-bold text-xs tracking-[0.2em] uppercase animate-pulse">Click to Play</p>
                         </div>
                     </div>
                 ) : !isPlaying ? (

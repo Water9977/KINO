@@ -51,19 +51,21 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
                     </div>
 
                     {/* Type Toggle */}
-                    <div className="flex items-center p-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-sm">
-                        <Link
-                            href={`/discover?type=movie`}
-                            className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${type === 'movie' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Movies
-                        </Link>
-                        <Link
-                            href={`/discover?type=tv`}
-                            className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${type === 'tv' ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            TV Shows
-                        </Link>
+                    <div className="flex justify-center w-full md:w-auto mt-2 md:mt-0">
+                        <div className="flex items-center p-1.5 bg-[#16161e] rounded-full border border-white/5 w-full sm:w-[340px] md:w-auto">
+                            <Link
+                                href={`/discover?type=movie`}
+                                className={`flex-1 md:flex-none text-center px-6 py-2.5 rounded-full text-sm font-bold transition-all ${type === 'movie' ? 'bg-[#2563eb] text-white shadow-md shadow-blue-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                Movies
+                            </Link>
+                            <Link
+                                href={`/discover?type=tv`}
+                                className={`flex-1 md:flex-none text-center px-6 py-2.5 rounded-full text-sm font-bold transition-all ${type === 'tv' ? 'bg-[#2563eb] text-white shadow-md shadow-blue-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                TV Shows
+                            </Link>
+                        </div>
                     </div>
                 </div>
 

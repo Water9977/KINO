@@ -24,17 +24,17 @@ export const MovieRow = ({ title, movies, viewAllLink, isLoading }: MovieRowProp
 
     return (
         <div className="space-y-4 py-8">
-            <div className="flex items-center justify-between px-6 md:px-10">
-                <h2 className="text-2xl font-bold text-white font-outfit tracking-tight flex items-center gap-2">
+            <div className="flex items-center justify-between px-6 md:px-10 gap-4">
+                <h2 className="text-xl md:text-2xl font-bold text-white font-outfit tracking-tight truncate">
                     {title}
                 </h2>
                 {viewAllLink && !showSkeleton && (
                     <Link
                         href={viewAllLink}
-                        className="group flex items-center gap-1 text-sm font-medium text-white/60 transition-colors hover:text-[#2563eb]"
+                        className="group flex items-center gap-1 text-sm font-medium text-white/60 transition-colors hover:text-[#2563eb] shrink-0"
                     >
                         View All
-                        <ChevronRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                        <ChevronRight size={16} className="transition-transform duration-300 group-hover:translate-x-1 shrink-0" />
                     </Link>
                 )}
                 {showSkeleton && (

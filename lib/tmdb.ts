@@ -1,150 +1,150 @@
 const BASE_URL = process.env.TMDB_BASE_URL;
 const API_KEY = process.env.TMDB_API_KEY;
 
+// ─── Resilient fetch with exponential backoff retry ──────────────────────────
+async function tmdbFetch(url: string, retries = 3): Promise<any> {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const res = await fetch(url, {
+                next: { revalidate: 300 }, // cache for 5 minutes server-side
+                signal: AbortSignal.timeout(8000), // 8s timeout per attempt
+            });
+
+            if (!res.ok) {
+                // TMDB rate limit — back off
+                if (res.status === 429) {
+                    const retryAfter = Number(res.headers.get("Retry-After") || 2) * 1000;
+                    await sleep(retryAfter);
+                    continue;
+                }
+                // Other HTTP errors — return empty to avoid crash
+                console.warn(`[TMDB] HTTP ${res.status} for ${url}`);
+                return { results: [], genres: [], success: false };
+            }
+
+            return res.json();
+        } catch (err: any) {
+            const isLast = attempt === retries - 1;
+            console.warn(`[TMDB] fetch attempt ${attempt + 1} failed:`, err?.message ?? err);
+            if (!isLast) {
+                // Exponential backoff: 500ms, 1000ms, 2000ms
+                await sleep(500 * Math.pow(2, attempt));
+            }
+        }
+    }
+
+    // All retries exhausted — return safe empty payload
+    console.error(`[TMDB] All retries exhausted for: ${url}`);
+    return { results: [], genres: [], success: false };
+}
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ─── TMDB API ─────────────────────────────────────────────────────────────────
+
 export const TMDB = {
     getImage: (path: string, size: 'original' | 'w500' = 'original') => {
         return `${process.env.NEXT_PUBLIC_TMDB_IMAGE_URL}/${size}${path}`;
     },
 
     getTrending: async () => {
-        const res = await fetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}`);
     },
 
     getNowPlaying: async () => {
-        const res = await fetch(`${BASE_URL}/movie/now_playing?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/movie/now_playing?api_key=${API_KEY}`);
     },
 
     getTopRated: async () => {
-        const res = await fetch(`${BASE_URL}/movie/top_rated?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/movie/top_rated?api_key=${API_KEY}`);
     },
 
     getPopular: async () => {
-        const res = await fetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
     },
 
     getUpcoming: async () => {
-        const res = await fetch(`${BASE_URL}/movie/upcoming?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/movie/upcoming?api_key=${API_KEY}`);
     },
 
     getMoviesByCategory: async (category: string, page: number = 1) => {
-        let endpoint = '';
-        switch (category) {
-            case 'trending':
-                endpoint = '/trending/movie/week';
-                break;
-            case 'now_playing':
-                endpoint = '/movie/now_playing';
-                break;
-            case 'top_rated':
-                endpoint = '/movie/top_rated';
-                break;
-            case 'popular':
-                endpoint = '/movie/popular';
-                break;
-            case 'upcoming':
-                endpoint = '/movie/upcoming';
-                break;
-            default:
-                endpoint = '/movie/popular';
-        }
-        const res = await fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
-        return res.json();
+        const endpointMap: Record<string, string> = {
+            trending: '/trending/movie/week',
+            now_playing: '/movie/now_playing',
+            top_rated: '/movie/top_rated',
+            popular: '/movie/popular',
+            upcoming: '/movie/upcoming',
+        };
+        const endpoint = endpointMap[category] ?? '/movie/popular';
+        return tmdbFetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
     },
 
     getTvShowsByCategory: async (category: string, page: number = 1) => {
-        let endpoint = '';
-        switch (category) {
-            case 'trending':
-                endpoint = '/trending/tv/week';
-                break;
-            case 'on_the_air':
-                endpoint = '/tv/on_the_air';
-                break;
-            case 'top_rated':
-                endpoint = '/tv/top_rated';
-                break;
-            case 'popular':
-                endpoint = '/tv/popular';
-                break;
-            case 'airing_today':
-                endpoint = '/tv/airing_today';
-                break;
-            default:
-                endpoint = '/tv/popular';
-        }
-        const res = await fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
-        return res.json();
+        const endpointMap: Record<string, string> = {
+            trending: '/trending/tv/week',
+            on_the_air: '/tv/on_the_air',
+            top_rated: '/tv/top_rated',
+            popular: '/tv/popular',
+            airing_today: '/tv/airing_today',
+        };
+        const endpoint = endpointMap[category] ?? '/tv/popular';
+        return tmdbFetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
     },
 
     search: async (query: string) => {
+        if (!query.trim()) return { results: [] };
+
         const encodedQuery = encodeURIComponent(query);
 
-        try {
-            const [movieRes, tvRes] = await Promise.all([
-                fetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`),
-                fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`)
-            ]);
+        const [movieData, tvData] = await Promise.all([
+            tmdbFetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`),
+            tmdbFetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`),
+        ]);
 
-            const [movieData, tvData] = await Promise.all([
-                movieRes.json(),
-                tvRes.json()
-            ]);
+        const movies = (movieData.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
+        const tvShows = (tvData.results || []).map((t: any) => ({ ...t, media_type: 'tv' }));
 
-            const movies = (movieData.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
-            const tvShows = (tvData.results || []).map((t: any) => ({ ...t, media_type: 'tv' }));
+        const combined = [...movies, ...tvShows].sort((a, b) =>
+            (b.popularity || 0) - (a.popularity || 0)
+        );
 
-            const combined = [...movies, ...tvShows].sort((a, b) => {
-                const popA = a.popularity || 0;
-                const popB = b.popularity || 0;
-                return popB - popA; // Descending order
-            });
-
-            return { results: combined };
-        } catch (error) {
-            console.error("Search API offset error:", error);
-            return { results: [] };
-        }
+        return { results: combined };
     },
 
     getDetails: async (id: string, type: 'movie' | 'tv' = 'movie') => {
-        const res = await fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar,recommendations`);
     },
 
     getSeasonDetails: async (tvId: number, seasonNumber: number) => {
-        const res = await fetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
     },
 
-    discover: async (type: 'movie' | 'tv', sort_by: string = 'popularity.desc', genre_id?: string, page: number = 1, provider_id?: string) => {
+    discover: async (
+        type: 'movie' | 'tv',
+        sort_by: string = 'popularity.desc',
+        genre_id?: string,
+        page: number = 1,
+        provider_id?: string
+    ) => {
         let url = `${BASE_URL}/discover/${type}?api_key=${API_KEY}&page=${page}&sort_by=${sort_by}&watch_region=US`;
 
-        // Fix for "Top Rated" showing obscure movies with 1-2 votes
+        // Require minimum votes to avoid obscure results in "Top Rated"
         if (sort_by === 'vote_average.desc') {
             url += `&vote_count.gte=1000`;
         }
-        if (genre_id) {
-            url += `&with_genres=${genre_id}`;
-        }
-        if (provider_id) {
-            url += `&with_watch_providers=${provider_id}`;
-        }
-        const res = await fetch(url);
-        return res.json();
+        if (genre_id) url += `&with_genres=${genre_id}`;
+        if (provider_id) url += `&with_watch_providers=${provider_id}`;
+
+        return tmdbFetch(url);
     },
 
     getGenres: async (type: 'movie' | 'tv') => {
-        const res = await fetch(`${BASE_URL}/genre/${type}/list?api_key=${API_KEY}`);
-        return res.json();
+        return tmdbFetch(`${BASE_URL}/genre/${type}/list?api_key=${API_KEY}`);
     },
 
     getWatchProviders: async (type: 'movie' | 'tv') => {
-        const res = await fetch(`${BASE_URL}/watch/providers/${type}?api_key=${API_KEY}&watch_region=US`);
-        return res.json();
-    }
+        return tmdbFetch(`${BASE_URL}/watch/providers/${type}?api_key=${API_KEY}&watch_region=US`);
+    },
 };
