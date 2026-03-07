@@ -395,8 +395,8 @@ export const VideoPlayer = ({ tmdbId, mediaType = 'movie', seasons = [], isBolly
                             </div>
                         </div>
 
-                        {/* Season Selection */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar max-w-[50%]">
+                        {/* Season Selection - With custom scrollbar (slider) for many seasons */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-4 max-w-[60%] lg:max-w-[75%] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-white/5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#2563eb]/50 hover:[&::-webkit-scrollbar-thumb]:bg-[#2563eb] [&::-webkit-scrollbar-thumb]:rounded-full transition-all">
                             {availableSeasons.map((season) => (
                                 <button
                                     key={season.id}
