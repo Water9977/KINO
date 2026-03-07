@@ -3,10 +3,49 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import Image from "next/image";
 import { Star, Calendar, Clock, User, Film, Info } from "lucide-react";
 import { MovieRow } from "@/components/MovieRow";
+import type { Metadata } from "next";
 
 interface PageProps {
     params: Promise<{ id: string }>;
     searchParams: Promise<{ type?: string }>;
+}
+
+// ── Dynamic Metadata for every watch page ─────────────────────────────────────
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+    const { id } = await params;
+    const { type } = await searchParams;
+    const mediaType = (type as 'movie' | 'tv') || 'movie';
+    const movie = await TMDB.getDetails(id, mediaType);
+
+    if (!movie || movie.success === false) {
+        return { title: 'Not Found | Kino' };
+    }
+
+    const title = movie.title || movie.name;
+    const year = (movie.release_date || movie.first_air_date)?.split('-')[0];
+    const description = movie.overview
+        ? `${movie.overview.slice(0, 155)}...`
+        : `Watch ${title} free online on Kino. No sign-up, no ads.`;
+    const poster = movie.poster_path
+        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+        : undefined;
+
+    return {
+        title: `Watch ${title} (${year}) Free Online | Kino`,
+        description,
+        openGraph: {
+            title: `${title} — Watch Free on Kino`,
+            description,
+            images: poster ? [{ url: poster }] : [],
+            type: 'video.movie',
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: `Watch ${title} Free | Kino`,
+            description,
+            images: poster ? [poster] : [],
+        },
+    };
 }
 
 export default async function WatchPage({ params, searchParams }: PageProps) {
@@ -45,6 +84,35 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
 
     return (
         <main className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden">
+            {/* JSON-LD Structured Data for Google Rich Results */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": mediaType === 'tv' ? "TVSeries" : "Movie",
+                        "name": title,
+                        "description": overview || "",
+                        "datePublished": release_date?.split('-')[0] || "",
+                        "image": poster_path ? `https://image.tmdb.org/t/p/w500${poster_path}` : "",
+                        "director": director ? { "@type": "Person", "name": director } : undefined,
+                        "genre": genres?.map((g: any) => g.name) || [],
+                        "actor": cast.slice(0, 5).map((a: any) => ({
+                            "@type": "Person",
+                            "name": a.name,
+                        })),
+                        ...(vote_average && vote_average > 0 ? {
+                            "aggregateRating": {
+                                "@type": "AggregateRating",
+                                "ratingValue": vote_average.toFixed(1),
+                                "bestRating": "10",
+                                "worstRating": "1",
+                                "ratingCount": movie.vote_count || 100,
+                            }
+                        } : {}),
+                    })
+                }}
+            />
             {/* Background Ambilight Glow - CSS Radial Gradients for 60fps Mobile Performance */}
             <div className="absolute top-0 inset-x-0 h-[80vh] pointer-events-none opacity-30 z-0 mt-16 md:mt-20">
                 <div className="absolute top-0 left-1/4 w-[70vw] lg:w-[50vw] h-[50vh] animate-pulse-slow"
