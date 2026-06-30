@@ -11,13 +11,12 @@ import { AnimatePresence, motion } from 'framer-motion';
  *
  * Color logic:
  *  romantic  — deep warm pink    (#EC4899)  — soft, emotive
- *  action    — blood crimson     (#DC143C)  — Crimson: classic blood red,
- *               bright enough on near-black for large display text
+ *  action    — blood crimson     (#DC143C)  — Crimson: classic blood red
  *  thriller  — deep cyan         (#06B6D4)  — cold & suspenseful
  *  horror    — dark violet       (#7C3AED)  — sinister, not neon-purple
- *  sci-fi    — fire orange       (#F97316)  — warm combustion, distinct
- *               from crime's amber
- *  crime     — vintage amber     (#D97706)  — old film, cigarette smoke
+ *  sci-fi    — OrangeRed fire    (#FF4500)  — rocket exhaust / reentry glow.
+ *               Clearly RED-fire vs crime's YELLOW-amber. Different hue family.
+ *  crime     — vintage amber     (#D97706)  — old film grain, cigarette smoke
  *
  * No two genres share the same hue family. All pass readable contrast as
  * large display text on #0a0a0a.
@@ -57,10 +56,14 @@ const genres = [
   },
   {
     word: 'sci-fi',
-    color: '#F97316',                  // fire orange — combustion & heat
-    fontVar: 'var(--font-neuemetana)',
-    fontSize: '1em',
-    letterSpacing: '0.14em',
+    // #FF4500 = OrangeRed: rocket exhaust, reentry glow — clearly RED-fire,
+    // not YELLOW-orange like crime's amber. Perceptually distinct hue family.
+    color: '#FF4500',
+    // HumblleRoughCaps: all-caps, rough textured display font — 306KB, visually
+    // unmistakeable. Nothing like Outfit or any system font.
+    fontVar: 'var(--font-humbllerought)',
+    fontSize: '1.1em',
+    letterSpacing: '0.1em',
     suffix: ' 🌌',
   },
   {

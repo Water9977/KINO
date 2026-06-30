@@ -54,6 +54,14 @@ const hoodsonScript = localFont({
   display: "block",
 });
 
+// Humblle Rought Caps — all-caps rough-texture display face, unmistakably
+// different from any system font. Used for sci-fi (gritty industrial future).
+const humblleCaps = localFont({
+  src: "../public/fonts/HumblleRoughCaps.otf",
+  variable: "--font-humbllerought",
+  display: "block",
+});
+
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
   width: "device-width",
@@ -107,7 +115,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark selection:bg-blue-600/30 ${sweetline.variable} ${blackHeat.variable} ${blackTheory.variable} ${skywalker.variable} ${neueMetana.variable} ${hoodsonScript.variable}`}
+      className={`dark selection:bg-blue-600/30 ${sweetline.variable} ${blackHeat.variable} ${blackTheory.variable} ${skywalker.variable} ${neueMetana.variable} ${hoodsonScript.variable} ${humblleCaps.variable}`}
     >
       <head>
         {/* PWA install prompt support for mobile browsers */}
