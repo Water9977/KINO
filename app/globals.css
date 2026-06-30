@@ -72,14 +72,6 @@
         @apply bg-black/40 backdrop-blur-xl border border-white/5;
     }
 
-    .text-gradient {
-        @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60;
-    }
-
-    .text-gradient-blue {
-        @apply bg-clip-text text-transparent bg-gradient-to-r from-kino-blue to-kino-accent;
-    }
-
     .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
     }
