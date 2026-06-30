@@ -62,43 +62,38 @@ export default function HomePage() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
+      {/* Layer 0 — EvilEye full-screen background, static center, 15% bigger (scale 0.87) */}
+      <div className="absolute inset-0 z-0">
+        <EvilEye
+          eyeColor="#FF6F37"
+          backgroundColor="#0a0a0a"
+          intensity={1.1}
+          scale={0.87}
+          glowIntensity={0.28}
+          pupilFollow={0}
+          flameSpeed={0.9}
+        />
+      </div>
+
       {/* Layer 1 — ImageTrail cursor effect (fixed, pointer-events: none) */}
       <ImageTrail items={posters} />
 
-      {/* Layer 2 — Center column: Eye → KINO → FlipWords → Button */}
+      {/* Layer 2 — Center column: KINO → FlipWords → Button */}
       <div className="relative z-20 h-full flex flex-col items-center justify-center gap-6 text-center px-6">
-
-        {/* EvilEye — small, contained at top of column */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.0, ease: [0.23, 1, 0.32, 1] }}
-          style={{ width: 'min(300px, 42vw)', height: 'min(200px, 28vw)' }}
-        >
-          <EvilEye
-            eyeColor="#FF6F37"
-            backgroundColor="#0a0a0a"
-            intensity={1.3}
-            scale={0.75}
-            glowIntensity={0.38}
-            pupilFollow={0.9}
-            flameSpeed={0.9}
-          />
-        </motion.div>
 
         {/* KINO logo */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -36 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+          transition={{ duration: 0.9, ease: [0.23, 1, 0.32, 1] }}
           className="font-black tracking-tight leading-none select-none"
-          style={{ fontSize: 'clamp(4rem, 18vw, 12rem)' }}
+          style={{ fontSize: 'clamp(4.5rem, 20vw, 14rem)' }}
         >
           <span className="text-white">KIN</span>
           <span
             style={{
               color: '#2563eb',
-              filter: 'drop-shadow(0 0 40px rgba(37,99,235,0.6))',
+              filter: 'drop-shadow(0 0 48px rgba(37,99,235,0.6))',
             }}
           >
             O
@@ -109,7 +104,7 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.55 }}
+          transition={{ delay: 0.42, duration: 0.55 }}
         >
           <CinemaFlipWords />
         </motion.div>
