@@ -68,7 +68,7 @@ const genres = [
   },
   {
     word: 'crime',
-    color: '#D97706',                  // vintage amber — old film grain
+    color: '#00B140',                  // Joker green — DC comics iconic mid-green
     fontVar: 'var(--font-hoodsonscript)',
     fontSize: '1.5em',
     letterSpacing: '0.01em',
