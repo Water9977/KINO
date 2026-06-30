@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 
@@ -11,6 +12,46 @@ const inter = Inter({
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
+});
+
+// ─── Dirtyline Studio fonts — next/font/local auto-injects <link rel="preload">
+// so the browser fetches them before first paint. display:"block" means the
+// text stays invisible for a short burst period rather than flashing the
+// fallback font first (FOUT). Combined with preload, the window is imperceptible.
+const sweetline = localFont({
+  src: "../public/fonts/Sweetline.otf",
+  variable: "--font-sweetline",
+  display: "block",
+});
+
+const blackHeat = localFont({
+  src: "../public/fonts/BlackHeat.otf",
+  variable: "--font-blackheat",
+  display: "block",
+});
+
+const blackTheory = localFont({
+  src: "../public/fonts/BlackTheory.otf",
+  variable: "--font-blacktheory",
+  display: "block",
+});
+
+const skywalker = localFont({
+  src: "../public/fonts/Skywalker.otf",
+  variable: "--font-skywalker",
+  display: "block",
+});
+
+const neueMetana = localFont({
+  src: "../public/fonts/NeueMetana.otf",
+  variable: "--font-neuemetana",
+  display: "block",
+});
+
+const hoodsonScript = localFont({
+  src: "../public/fonts/HoodsonScript.otf",
+  variable: "--font-hoodsonscript",
+  display: "block",
 });
 
 export const viewport: Viewport = {
@@ -63,7 +104,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark selection:bg-blue-600/30">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`dark selection:bg-blue-600/30 ${sweetline.variable} ${blackHeat.variable} ${blackTheory.variable} ${skywalker.variable} ${neueMetana.variable} ${hoodsonScript.variable}`}
+    >
       <head>
         {/* PWA install prompt support for mobile browsers */}
         <meta name="mobile-web-app-capable" content="yes" />

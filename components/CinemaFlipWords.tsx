@@ -3,54 +3,70 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-// Each genre gets its own Dirtyline Studio personality.
-// Font sizes are tuned per-font since display typefaces have wildly different
-// cap heights and optical weights.
+/**
+ * Each genre gets its own Dirtyline Studio font via the CSS variable that
+ * next/font/local injected on <html>. Using var(--font-*) instead of a raw
+ * font-family string means the browser uses exactly the preloaded file — no
+ * flash, no fallback swap.
+ *
+ * Color logic:
+ *  romantic  — deep warm pink    (#EC4899)  — soft, emotive
+ *  action    — blood crimson     (#DC143C)  — Crimson: classic blood red,
+ *               bright enough on near-black for large display text
+ *  thriller  — deep cyan         (#06B6D4)  — cold & suspenseful
+ *  horror    — dark violet       (#7C3AED)  — sinister, not neon-purple
+ *  sci-fi    — fire orange       (#F97316)  — warm combustion, distinct
+ *               from crime's amber
+ *  crime     — vintage amber     (#D97706)  — old film, cigarette smoke
+ *
+ * No two genres share the same hue family. All pass readable contrast as
+ * large display text on #0a0a0a.
+ */
 const genres = [
   {
     word: 'romantic',
-    color: '#EC4899',          // deep warm pink — legible on near-black
-    fontFamily: 'Sweetline, Georgia, serif',
-    fontSize: '1.65em',        // Sweetline is a script — needs more room
+    color: '#EC4899',
+    fontVar: 'var(--font-sweetline)',
+    fontSize: '1.65em',
     letterSpacing: '0.02em',
     suffix: ' ❤️',
   },
   {
     word: 'action',
-    color: '#EF4444',          // punchy crimson
-    fontFamily: 'BlackHeat, Impact, sans-serif',
+    color: '#DC143C',                  // Crimson — blood red that reads on black
+    fontVar: 'var(--font-blackheat)',
     fontSize: '1.1em',
-    letterSpacing: '0.12em',   // BlackHeat is condensed — spacing helps
+    letterSpacing: '0.12em',
     suffix: ' 💥',
   },
   {
     word: 'thriller',
-    color: '#06B6D4',          // deep cyan — not neon, just saturated cool
-    fontFamily: 'BlackTheory, "Trebuchet MS", sans-serif',
+    color: '#06B6D4',
+    fontVar: 'var(--font-blacktheory)',
     fontSize: '1.05em',
     letterSpacing: '0.06em',
     suffix: ' 🔪',
   },
   {
     word: 'horror',
-    color: '#EA580C',          // burnt orange — unsettling, no glow needed
-    fontFamily: 'Skywalker, "Courier New", monospace',
+    color: '#7C3AED',                  // dark violet — brooding, not neon
+    fontVar: 'var(--font-skywalker)',
     fontSize: '1.15em',
     letterSpacing: '0.04em',
     suffix: ' 💀',
   },
   {
     word: 'sci-fi',
-    color: '#6366F1',          // slate indigo — cool & cerebral
-    fontFamily: 'NeueMetana, "Arial Narrow", sans-serif',
+    color: '#F97316',                  // fire orange — combustion & heat
+    fontVar: 'var(--font-neuemetana)',
     fontSize: '1em',
-    letterSpacing: '0.14em',   // geometric — benefits from spacing
+    letterSpacing: '0.14em',
     suffix: ' 🌌',
   },
   {
     word: 'crime',
-    color: '#D97706',          // vintage amber/gold — old film, cigarette smoke
-    fontFamily: 'HoodsonScript, Georgia, serif',
+    color: '#D97706',                  // vintage amber — old film grain
+    fontVar: 'var(--font-hoodsonscript)',
     fontSize: '1.5em',
     letterSpacing: '0.01em',
     suffix: ' 🃏',
@@ -68,31 +84,35 @@ export default function CinemaFlipWords() {
   const current = genres[index];
 
   return (
-    // Preserve "Watch ___ cinema" baseline — only the middle word is custom
+    // Outer line keeps "Watch" and "cinema" in the site's standard font
     <p
       className="text-2xl md:text-3xl font-bold text-white tracking-wide"
-      style={{ fontFamily: 'var(--font-sans)' }}
+      style={{ fontFamily: 'var(--font-outfit)' }}
     >
       Watch{' '}
       <AnimatePresence mode="wait">
         <motion.span
           key={current.word}
-          // Film-splice: near-instant cut with a tiny vertical snap
+          // Film-splice: snap cut with a minimal vertical drift + blur
           initial={{ opacity: 0, y: 14, filter: 'blur(4px)' }}
           animate={{ opacity: 1, y: 0,  filter: 'blur(0px)' }}
           exit={{    opacity: 0, y: -14, filter: 'blur(4px)' }}
           transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="inline-flex items-baseline gap-1 whitespace-nowrap"
           style={{
-            color:        current.color,
-            fontFamily:   current.fontFamily,
-            fontSize:     current.fontSize,
+            color:         current.color,
+            fontFamily:    current.fontVar,   // ← CSS variable, not a string
+            fontSize:      current.fontSize,
             letterSpacing: current.letterSpacing,
-            lineHeight:   1,
+            lineHeight:    1,
           }}
         >
           {current.word}
-          <span className="ml-1" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.7em', letterSpacing: 'normal' }}>
+          {/* Reset emoji back to standard font so it renders properly */}
+          <span
+            className="ml-1"
+            style={{ fontFamily: 'var(--font-outfit)', fontSize: '0.7em', letterSpacing: 'normal' }}
+          >
             {current.suffix}
           </span>
         </motion.span>
