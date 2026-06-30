@@ -62,24 +62,29 @@ export default function HomePage() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
-      {/* Layer 0 — EvilEye full-screen background, static center, 15% bigger (scale 0.87) */}
-      <div className="absolute inset-0 z-0">
-        <EvilEye
-          eyeColor="#FF6F37"
-          backgroundColor="#0a0a0a"
-          intensity={1.1}
-          scale={0.87}
-          glowIntensity={0.28}
-          pupilFollow={0}
-          flameSpeed={0.9}
-        />
-      </div>
-
       {/* Layer 1 — ImageTrail cursor effect (fixed, pointer-events: none) */}
       <ImageTrail items={posters} />
 
-      {/* Layer 2 — Center column: KINO → FlipWords → Button */}
-      <div className="relative z-20 h-full flex flex-col items-center justify-center gap-6 text-center px-6">
+      {/* Layer 2 — Center column: Eye → KINO → FlipWords → Button */}
+      <div className="relative z-20 h-full flex flex-col items-center justify-center gap-5 text-center px-6">
+
+        {/* EvilEye — small, top of column */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.0, ease: [0.23, 1, 0.32, 1] }}
+          style={{ width: 'min(300px, 44vw)', height: 'min(200px, 29vw)', flexShrink: 0 }}
+        >
+          <EvilEye
+            eyeColor="#FF6F37"
+            backgroundColor="#0a0a0a"
+            intensity={1.3}
+            scale={0.75}
+            glowIntensity={0.4}
+            pupilFollow={0}
+            flameSpeed={0.9}
+          />
+        </motion.div>
 
         {/* KINO logo */}
         <motion.h1
