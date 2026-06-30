@@ -109,24 +109,78 @@ export default function HomePage() {
           <CinemaFlipWords />
         </motion.div>
 
-        {/* Start Streaming button */}
+        {/* Retro Ticket Stub CTA */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.65, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
         >
-          <Link
-            href="/browse"
-            className="group inline-flex items-center gap-3 rounded-full bg-white px-8 py-4 font-bold text-[1.05rem] text-black hover:bg-gray-100 active:scale-95 transition-all shadow-2xl shadow-black/40"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="w-5 h-5 group-hover:translate-x-0.5 transition-transform"
+          <Link href="/browse" className="group block select-none">
+            {/* Outer ticket wrapper */}
+            <div
+              className="relative flex items-stretch transition-all duration-200 group-hover:-translate-y-0.5 group-active:translate-y-0"
+              style={{
+                /* round notch cutouts using radial-gradient mask bleeding into page bg */
+                background: '#2563eb',
+                borderRadius: '4px',
+                boxShadow: '0 2px 0 #1d4ed8, 0 4px 24px rgba(37,99,235,0.25)',
+              }}
             >
-              <path d="M8 5.14v14l11-7-11-7z" />
-            </svg>
-            Start Streaming
+              {/* Left notch */}
+              <span
+                className="absolute -left-[10px] top-1/2 -translate-y-1/2 w-5 h-5 rounded-full"
+                style={{ background: '#0a0a0a', zIndex: 2 }}
+                aria-hidden
+              />
+              {/* Right notch */}
+              <span
+                className="absolute -right-[10px] top-1/2 -translate-y-1/2 w-5 h-5 rounded-full"
+                style={{ background: '#0a0a0a', zIndex: 2 }}
+                aria-hidden
+              />
+
+              {/* Main ticket body */}
+              <div className="flex items-center gap-3 px-7 py-4">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform duration-200"
+                >
+                  <path d="M8 5.14v14l11-7-11-7z" />
+                </svg>
+                <span
+                  className="font-bold text-white tracking-widest uppercase"
+                  style={{ fontSize: '0.95rem', fontFamily: 'var(--font-sans)', letterSpacing: '0.14em' }}
+                >
+                  Start Streaming
+                </span>
+              </div>
+
+              {/* Dashed divider */}
+              <div
+                className="self-stretch w-px shrink-0"
+                style={{
+                  background: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 4px, transparent 4px, transparent 8px)',
+                }}
+                aria-hidden
+              />
+
+              {/* Counter-stub: ADMIT ONE */}
+              <div className="flex flex-col items-center justify-center px-4 py-4 gap-0.5">
+                <span
+                  className="text-white/60 font-mono uppercase"
+                  style={{ fontSize: '0.45rem', letterSpacing: '0.2em' }}
+                >
+                  ADMIT
+                </span>
+                <span
+                  className="text-white font-black font-mono"
+                  style={{ fontSize: '0.75rem', letterSpacing: '0.1em' }}
+                >
+                  ONE
+                </span>
+              </div>
+            </div>
           </Link>
         </motion.div>
       </div>

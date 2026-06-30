@@ -1,3 +1,35 @@
+/* ─── Custom Dirtyline Studio Fonts ────────────────────────────────────────── */
+@font-face {
+  font-family: 'Sweetline';
+  src: url('/fonts/Sweetline.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BlackHeat';
+  src: url('/fonts/BlackHeat.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BlackTheory';
+  src: url('/fonts/BlackTheory.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Skywalker';
+  src: url('/fonts/Skywalker.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NeueMetana';
+  src: url('/fonts/NeueMetana.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'HoodsonScript';
+  src: url('/fonts/HoodsonScript.otf') format('opentype');
+  font-display: swap;
+}
+
 @import "tailwindcss";
 
 @theme inline {
