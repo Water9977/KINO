@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useRef, ReactNode } from 'react';
 
 interface GlowCardProps {
@@ -34,22 +36,31 @@ const GlowCard: React.FC<GlowCardProps> = ({
     customSize = false
 }) => {
     const cardRef = useRef<HTMLDivElement>(null);
-    const innerRef = useRef<HTMLDivElement>(null);
+    const frameRef = useRef<number | null>(null);
 
     useEffect(() => {
+        // Batch the custom-property writes into one animation frame so a fast
+        // pointer can't queue four style mutations per event.
         const syncPointer = (e: PointerEvent) => {
             const { clientX: x, clientY: y } = e;
+            if (frameRef.current !== null) return;
 
-            if (cardRef.current) {
-                cardRef.current.style.setProperty('--x', x.toFixed(2));
-                cardRef.current.style.setProperty('--xp', (x / window.innerWidth).toFixed(2));
-                cardRef.current.style.setProperty('--y', y.toFixed(2));
-                cardRef.current.style.setProperty('--yp', (y / window.innerHeight).toFixed(2));
-            }
+            frameRef.current = requestAnimationFrame(() => {
+                frameRef.current = null;
+                const card = cardRef.current;
+                if (!card) return;
+                card.style.setProperty('--x', x.toFixed(2));
+                card.style.setProperty('--xp', (x / window.innerWidth).toFixed(2));
+                card.style.setProperty('--y', y.toFixed(2));
+                card.style.setProperty('--yp', (y / window.innerHeight).toFixed(2));
+            });
         };
 
-        document.addEventListener('pointermove', syncPointer);
-        return () => document.removeEventListener('pointermove', syncPointer);
+        document.addEventListener('pointermove', syncPointer, { passive: true });
+        return () => {
+            document.removeEventListener('pointermove', syncPointer);
+            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+        };
     }, []);
 
     const { base, spread } = glowColorMap[glowColor];
@@ -63,7 +74,7 @@ const GlowCard: React.FC<GlowCardProps> = ({
     };
 
     const getInlineStyles = () => {
-        const baseStyles: any = {
+        const baseStyles: Record<string, string | number> = {
             '--base': base,
             '--spread': spread,
             '--radius': '14',
@@ -177,7 +188,7 @@ const GlowCard: React.FC<GlowCardProps> = ({
           ${className}
         `}
             >
-                <div ref={innerRef} data-glow></div>
+                <div data-glow></div>
                 <div className="relative z-10 w-full h-full flex flex-col">
                     {children}
                 </div>

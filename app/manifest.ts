@@ -31,7 +31,6 @@ export default function manifest(): MetadataRoute.Manifest {
                 purpose: "maskable",
             },
         ],
-        screenshots: [],
         shortcuts: [
             {
                 name: "Browse Movies",

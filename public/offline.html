@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Offline | Kino</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #0a0a0a; color: #fff; text-align: center; padding: 24px;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 26rem; display: grid; gap: 12px; justify-items: center; }
+  .logo { font-size: 3rem; font-weight: 900; letter-spacing: -0.03em; }
+  .logo span { color: #2563eb; }
+  h1 { font-size: 1.35rem; margin: 4px 0 0; }
+  p { color: #9ca3af; line-height: 1.6; margin: 0; }
+  button {
+    margin-top: 12px; border: 0; cursor: pointer; border-radius: 999px;
+    background: #2563eb; color: #fff; font: inherit; font-weight: 600;
+    padding: 12px 28px;
+  }
+  button:hover { background: #1d4ed8; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">KIN<span>O</span></div>
+    <h1>You're offline</h1>
+    <p>Kino needs a connection to load titles. Check your network and try again.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>

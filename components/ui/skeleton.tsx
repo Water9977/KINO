@@ -72,8 +72,6 @@ export function MovieRowSkeleton({ title, count = 8 }: MovieRowSkeletonProps) {
                     <div
                         key={i}
                         className="min-w-[160px] w-[160px] md:min-w-[200px] md:w-[200px] flex-shrink-0"
-                        // Stagger the shimmer delay slightly for a wave effect
-                        style={{ animationDelay: `${i * 0.08}s` }}
                     >
                         <MovieCardSkeleton />
                     </div>

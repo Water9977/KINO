@@ -7,22 +7,6 @@
 const isSupported = () =>
     typeof window !== "undefined" && "vibrate" in navigator;
 
-/**
- * Debug check — open Chrome DevTools on Android (chrome://inspect)
- * and call: window.__kinoHapticTest?.() to verify the API is firing.
- */
-if (typeof window !== "undefined") {
-    (window as any).__kinoHapticTest = () => {
-        if (!("vibrate" in navigator)) {
-            console.warn("[Haptics] navigator.vibrate NOT supported on this browser/device.");
-            return false;
-        }
-        console.log("[Haptics] Vibration API IS supported. Firing test pulse...");
-        navigator.vibrate([100, 50, 100]);
-        return true;
-    };
-}
-
 /** Light tap — icon buttons, toggles (60ms — actually feelable) */
 export function hapticLight() {
     if (!isSupported()) return;
@@ -45,12 +29,6 @@ export function hapticHeavy() {
 export function hapticSuccess() {
     if (!isSupported()) return;
     navigator.vibrate([60, 40, 100]);
-}
-
-/** Error / warning pattern */
-export function hapticError() {
-    if (!isSupported()) return;
-    navigator.vibrate([80, 50, 80, 50, 120]);
 }
 
 /** Carousel dot tick — subtle snap */
