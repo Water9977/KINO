@@ -21,7 +21,7 @@ against a local production server.
 | # | Finding | What changed |
 |---|---|---|
 | — | **Server 2 removed** (owner request) | `vidsrc.xyz` deleted; `vidlink.pro` is the only provider. The server switcher UI, the `isBollywood` heuristic and the dead "Report Issue" button are gone. Verified: 0 bundle references to `vidsrc`. |
-| C2 | Unsandboxed iframe | `sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"` (no top-navigation, no popups) + `referrerPolicy="no-referrer"`. |
+| C2 | Unsandboxed iframe | **Attempted and reverted — see the correction below.** The iframe is unsandboxed as before; the CSP `frame-src` allowlist is what limits which origin can be framed. |
 | C3 | ImageTrail leaks | Rewritten with a `destroy()` teardown: frame cancelled, listeners removed, one shared resize handler instead of 20, loop starts on first pointer move and z-index is bounded. |
 | C4 | 2.53 MB fonts on every route | Display faces moved to `lib/fonts.ts` with `preload: false`, scoped to the landing page. **Verified: 0 `.otf` requests on `/browse`.** `NeueMetana` deleted (unused). |
 | C5 | Oversized images | All image URLs go through `tmdbImage()`. Backdrops `original` → `w1280`, posters `w500`, stills `w400`, profiles `w185`. `unoptimized` left on deliberately — see the comment in `next.config.ts`. |
@@ -53,6 +53,17 @@ against a local production server.
 | — | Config/docs | Dead `serverComponentsHmrCache` and the hardcoded LAN IP removed; `turbopack.root` pinned (silences the lockfile warning). Dead `OMDB_*` and `NEXT_PUBLIC_TMDB_IMAGE_URL` env vars removed. README rewritten — it previously told users to set `NEXT_PUBLIC_TMDB_API_KEY`, which would leak the key to browsers. |
 
 ### Correction to this audit
+
+**C2’s recommended fix does not work with this provider.** Adding `sandbox`
+to the player iframe made vidlink.pro refuse to play, rendering
+"Please Disable Sandbox" in place of the video. It was reverted in `c0c5047`;
+the iframe is back to `referrerPolicy="origin"` with no sandbox.
+
+The residual risk described in C2 is therefore unmitigated at the iframe level:
+the embed can still navigate the top window. What does constrain it now is the
+CSP added in H7, whose `frame-src https://vidlink.pro` allowlist means no other
+origin can be framed. The owner reports this provider serves no ads in practice.
+**Do not re-add `sandbox` here without testing playback first.**
 
 **The "692 KB HTML" figure in §8 and §11 overstated the problem.** That was the
 uncompressed body. Measured over the wire the browse document is **~53 KB
