@@ -14,9 +14,8 @@ import { AnimatePresence, motion } from 'framer-motion';
  *  action    — blood crimson     (#DC143C)  — Crimson: classic blood red
  *  thriller  — deep cyan         (#06B6D4)  — cold & suspenseful
  *  horror    — dark violet       (#7C3AED)  — sinister, not neon-purple
- *  sci-fi    — OrangeRed fire    (#FF4500)  — rocket exhaust / reentry glow.
- *               Clearly RED-fire vs crime's YELLOW-amber. Different hue family.
- *  crime     — vintage amber     (#D97706)  — old film grain, cigarette smoke
+ *  sci-fi    — OrangeRed fire    (#FF4500)  — rocket exhaust / reentry glow
+ *  crime     — Joker green       (#00B140)  — DC's iconic mid-green
  *
  * No two genres share the same hue family. All pass readable contrast as
  * large display text on #0a0a0a.

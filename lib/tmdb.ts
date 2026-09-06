@@ -1,31 +1,90 @@
-const BASE_URL = process.env.TMDB_BASE_URL;
+import type {
+    MediaType,
+    TmdbDetails,
+    TmdbGenreResponse,
+    TmdbListItem,
+    TmdbListResponse,
+    TmdbProviderResponse,
+    TmdbSeasonDetails,
+} from "./types";
+
+const BASE_URL = process.env.TMDB_BASE_URL ?? "https://api.themoviedb.org/3";
 const API_KEY = process.env.TMDB_API_KEY;
 
+if (!API_KEY && process.env.NODE_ENV !== "production") {
+    console.warn("[TMDB] TMDB_API_KEY is not set — every request will fail.");
+}
+
+// ─── Tunables ─────────────────────────────────────────────────────────────────
+
+export const TMDB_CONFIG = {
+    /** Server-side cache lifetime for every TMDB response, in seconds. */
+    revalidateSeconds: 300,
+    /** Per-attempt request timeout. */
+    timeoutMs: 8000,
+    /** Total attempts before giving up and returning an empty payload. */
+    retries: 3,
+    /** Minimum vote count when sorting by rating, so obscure titles don't win. */
+    minVotesForTopRated: 1000,
+    /** Region used for watch-provider availability. */
+    watchRegion: "US",
+} as const;
+
+// ─── Image helper ─────────────────────────────────────────────────────────────
+
+const IMAGE_BASE = "https://image.tmdb.org/t/p";
+
+export type PosterSize = "w92" | "w154" | "w300" | "w500";
+export type BackdropSize = "w300" | "w780" | "w1280" | "original";
+export type StillSize = "w300" | "w400";
+export type ProfileSize = "w185" | "w300";
+
+/**
+ * Builds a TMDB image URL, or returns null when there is no image.
+ *
+ * Always prefer this over hand-writing image.tmdb.org URLs — callers get a
+ * null to branch on instead of silently rendering `.../w500null`.
+ */
+export function tmdbImage(
+    path: string | null | undefined,
+    size: PosterSize | BackdropSize | StillSize | ProfileSize
+): string | null {
+    if (!path) return null;
+    return `${IMAGE_BASE}/${size}${path}`;
+}
+
 // ─── Resilient fetch with exponential backoff retry ──────────────────────────
-async function tmdbFetch(url: string, retries = 3): Promise<any> {
-    for (let attempt = 0; attempt < retries; attempt++) {
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const EMPTY_PAYLOAD = { results: [], genres: [], success: false };
+
+async function tmdbFetch<T>(url: string): Promise<T> {
+    for (let attempt = 0; attempt < TMDB_CONFIG.retries; attempt++) {
         try {
             const res = await fetch(url, {
-                next: { revalidate: 300 }, // cache for 5 minutes server-side
-                signal: AbortSignal.timeout(8000), // 8s timeout per attempt
+                next: { revalidate: TMDB_CONFIG.revalidateSeconds },
+                signal: AbortSignal.timeout(TMDB_CONFIG.timeoutMs),
             });
 
             if (!res.ok) {
-                // TMDB rate limit — back off
+                // TMDB rate limit — respect Retry-After and try again.
                 if (res.status === 429) {
                     const retryAfter = Number(res.headers.get("Retry-After") || 2) * 1000;
                     await sleep(retryAfter);
                     continue;
                 }
-                // Other HTTP errors — return empty to avoid crash
-                console.warn(`[TMDB] HTTP ${res.status} for ${url}`);
-                return { results: [], genres: [], success: false };
+                console.warn(`[TMDB] HTTP ${res.status} for ${redact(url)}`);
+                return EMPTY_PAYLOAD as T;
             }
 
-            return res.json();
-        } catch (err: any) {
-            const isLast = attempt === retries - 1;
-            console.warn(`[TMDB] fetch attempt ${attempt + 1} failed:`, err?.message ?? err);
+            return (await res.json()) as T;
+        } catch (err) {
+            const isLast = attempt === TMDB_CONFIG.retries - 1;
+            const message = err instanceof Error ? err.message : String(err);
+            console.warn(`[TMDB] attempt ${attempt + 1} failed: ${message}`);
             if (!isLast) {
                 // Exponential backoff: 500ms, 1000ms, 2000ms
                 await sleep(500 * Math.pow(2, attempt));
@@ -33,118 +92,169 @@ async function tmdbFetch(url: string, retries = 3): Promise<any> {
         }
     }
 
-    // All retries exhausted — return safe empty payload
-    console.error(`[TMDB] All retries exhausted for: ${url}`);
-    return { results: [], genres: [], success: false };
+    console.error(`[TMDB] All retries exhausted for: ${redact(url)}`);
+    return EMPTY_PAYLOAD as T;
 }
 
-function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+/** Strips the API key before a URL reaches any log. */
+function redact(url: string) {
+    return url.replace(/api_key=[^&]*/, "api_key=***");
+}
+
+function buildUrl(path: string, params: Record<string, string | number | undefined> = {}) {
+    const search = new URLSearchParams({ api_key: API_KEY ?? "" });
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== "") search.set(key, String(value));
+    }
+    return `${BASE_URL}${path}?${search.toString()}`;
+}
+
+// ─── Category endpoint maps ───────────────────────────────────────────────────
+
+const MOVIE_CATEGORIES = {
+    trending: "/trending/movie/week",
+    now_playing: "/movie/now_playing",
+    top_rated: "/movie/top_rated",
+    popular: "/movie/popular",
+    upcoming: "/movie/upcoming",
+} as const;
+
+const TV_CATEGORIES = {
+    trending: "/trending/tv/week",
+    on_the_air: "/tv/on_the_air",
+    top_rated: "/tv/top_rated",
+    popular: "/tv/popular",
+    airing_today: "/tv/airing_today",
+} as const;
+
+export type MovieCategory = keyof typeof MOVIE_CATEGORIES;
+export type TvCategory = keyof typeof TV_CATEGORIES;
+
+/** True when `slug` is a category this app actually serves. Used to 404 unknown slugs. */
+export function isKnownCategory(slug: string, type: MediaType): boolean {
+    const map = type === "tv" ? TV_CATEGORIES : MOVIE_CATEGORIES;
+    return slug in map;
 }
 
 // ─── TMDB API ─────────────────────────────────────────────────────────────────
 
 export const TMDB = {
-    getImage: (path: string, size: 'original' | 'w500' = 'original') => {
-        return `${process.env.NEXT_PUBLIC_TMDB_IMAGE_URL}/${size}${path}`;
+    getTrending: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.trending)),
+
+    getNowPlaying: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.now_playing)),
+
+    getTopRated: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.top_rated)),
+
+    getPopular: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.popular)),
+
+    getUpcoming: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.upcoming)),
+
+    getMoviesByCategory: (category: string, page = 1) => {
+        const endpoint = MOVIE_CATEGORIES[category as MovieCategory] ?? MOVIE_CATEGORIES.popular;
+        return tmdbFetch<TmdbListResponse>(buildUrl(endpoint, { page }));
     },
 
-    getTrending: async () => {
-        return tmdbFetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}`);
+    getTvShowsByCategory: (category: string, page = 1) => {
+        const endpoint = TV_CATEGORIES[category as TvCategory] ?? TV_CATEGORIES.popular;
+        return tmdbFetch<TmdbListResponse>(buildUrl(endpoint, { page }));
     },
 
-    getNowPlaying: async () => {
-        return tmdbFetch(`${BASE_URL}/movie/now_playing?api_key=${API_KEY}`);
-    },
-
-    getTopRated: async () => {
-        return tmdbFetch(`${BASE_URL}/movie/top_rated?api_key=${API_KEY}`);
-    },
-
-    getPopular: async () => {
-        return tmdbFetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
-    },
-
-    getUpcoming: async () => {
-        return tmdbFetch(`${BASE_URL}/movie/upcoming?api_key=${API_KEY}`);
-    },
-
-    getMoviesByCategory: async (category: string, page: number = 1) => {
-        const endpointMap: Record<string, string> = {
-            trending: '/trending/movie/week',
-            now_playing: '/movie/now_playing',
-            top_rated: '/movie/top_rated',
-            popular: '/movie/popular',
-            upcoming: '/movie/upcoming',
-        };
-        const endpoint = endpointMap[category] ?? '/movie/popular';
-        return tmdbFetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
-    },
-
-    getTvShowsByCategory: async (category: string, page: number = 1) => {
-        const endpointMap: Record<string, string> = {
-            trending: '/trending/tv/week',
-            on_the_air: '/tv/on_the_air',
-            top_rated: '/tv/top_rated',
-            popular: '/tv/popular',
-            airing_today: '/tv/airing_today',
-        };
-        const endpoint = endpointMap[category] ?? '/tv/popular';
-        return tmdbFetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&page=${page}`);
-    },
-
-    search: async (query: string) => {
+    search: async (query: string): Promise<TmdbListResponse> => {
         if (!query.trim()) return { results: [] };
 
-        const encodedQuery = encodeURIComponent(query);
-
         const [movieData, tvData] = await Promise.all([
-            tmdbFetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`),
-            tmdbFetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodedQuery}&include_adult=false`),
+            tmdbFetch<TmdbListResponse>(
+                buildUrl("/search/movie", { query, include_adult: "false" })
+            ),
+            tmdbFetch<TmdbListResponse>(
+                buildUrl("/search/tv", { query, include_adult: "false" })
+            ),
         ]);
 
-        const movies = (movieData.results || []).map((m: any) => ({ ...m, media_type: 'movie' }));
-        const tvShows = (tvData.results || []).map((t: any) => ({ ...t, media_type: 'tv' }));
+        const movies: TmdbListItem[] = (movieData.results || []).map((m) => ({
+            ...m,
+            media_type: "movie",
+        }));
+        const tvShows: TmdbListItem[] = (tvData.results || []).map((t) => ({
+            ...t,
+            media_type: "tv",
+        }));
 
-        const combined = [...movies, ...tvShows].sort((a, b) =>
-            (b.popularity || 0) - (a.popularity || 0)
+        const combined = [...movies, ...tvShows].sort(
+            (a, b) => (b.popularity || 0) - (a.popularity || 0)
         );
 
         return { results: combined };
     },
 
-    getDetails: async (id: string, type: 'movie' | 'tv' = 'movie') => {
-        return tmdbFetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar,recommendations`);
-    },
+    getDetails: (id: string, type: MediaType = "movie") =>
+        tmdbFetch<TmdbDetails>(
+            buildUrl(`/${type}/${id}`, {
+                append_to_response: "videos,credits,similar,recommendations",
+            })
+        ),
 
-    getSeasonDetails: async (tvId: number, seasonNumber: number) => {
-        return tmdbFetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}`);
-    },
+    getSeasonDetails: (tvId: number, seasonNumber: number) =>
+        tmdbFetch<TmdbSeasonDetails>(buildUrl(`/tv/${tvId}/season/${seasonNumber}`)),
 
-    discover: async (
-        type: 'movie' | 'tv',
-        sort_by: string = 'popularity.desc',
+    discover: (
+        type: MediaType,
+        sort_by = "popularity.desc",
         genre_id?: string,
-        page: number = 1,
+        page = 1,
         provider_id?: string
-    ) => {
-        let url = `${BASE_URL}/discover/${type}?api_key=${API_KEY}&page=${page}&sort_by=${sort_by}&watch_region=US`;
+    ) =>
+        tmdbFetch<TmdbListResponse>(
+            buildUrl(`/discover/${type}`, {
+                page,
+                sort_by,
+                watch_region: TMDB_CONFIG.watchRegion,
+                // Require a minimum vote count so "Top Rated" isn't won by obscure titles.
+                ...(sort_by === "vote_average.desc"
+                    ? { "vote_count.gte": TMDB_CONFIG.minVotesForTopRated }
+                    : {}),
+                with_genres: genre_id,
+                with_watch_providers: provider_id,
+            })
+        ),
 
-        // Require minimum votes to avoid obscure results in "Top Rated"
-        if (sort_by === 'vote_average.desc') {
-            url += `&vote_count.gte=1000`;
-        }
-        if (genre_id) url += `&with_genres=${genre_id}`;
-        if (provider_id) url += `&with_watch_providers=${provider_id}`;
+    getGenres: (type: MediaType) =>
+        tmdbFetch<TmdbGenreResponse>(buildUrl(`/genre/${type}/list`)),
 
-        return tmdbFetch(url);
-    },
-
-    getGenres: async (type: 'movie' | 'tv') => {
-        return tmdbFetch(`${BASE_URL}/genre/${type}/list?api_key=${API_KEY}`);
-    },
-
-    getWatchProviders: async (type: 'movie' | 'tv') => {
-        return tmdbFetch(`${BASE_URL}/watch/providers/${type}?api_key=${API_KEY}&watch_region=US`);
-    },
+    getWatchProviders: (type: MediaType) =>
+        tmdbFetch<TmdbProviderResponse>(
+            buildUrl(`/watch/providers/${type}`, { watch_region: TMDB_CONFIG.watchRegion })
+        ),
 };
+
+/**
+ * Trims a TMDB list item down to the fields the UI renders.
+ *
+ * Every field on a Server Component's props is serialized into the RSC payload
+ * that ships with the HTML. A browse page carries ~140 titles, and TMDB returns
+ * a dozen fields per title that nothing here reads (adult, genre_ids,
+ * original_title, video, vote_count, ...). Projecting first keeps that payload
+ * meaningfully smaller.
+ */
+export function toCardItem(item: TmdbListItem, fallbackType?: MediaType): TmdbListItem {
+    return {
+        id: item.id,
+        title: item.title,
+        name: item.name,
+        poster_path: item.poster_path,
+        backdrop_path: item.backdrop_path,
+        overview: item.overview,
+        vote_average: item.vote_average,
+        release_date: item.release_date,
+        first_air_date: item.first_air_date,
+        media_type: item.media_type ?? fallbackType,
+    };
+}
+
+/** Projects a whole list, dropping anything without an id. */
+export function toCardItems(
+    items: TmdbListItem[] | undefined,
+    fallbackType?: MediaType
+): TmdbListItem[] {
+    return (items ?? []).map((item) => toCardItem(item, fallbackType));
+}

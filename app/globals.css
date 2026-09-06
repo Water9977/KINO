@@ -8,46 +8,24 @@
     --color-kino-surface: #1a1a1a;
     --color-kino-border: rgba(255, 255, 255, 0.08);
 
-    --font-sans: "Outfit", "Inter", sans-serif;
+    /* next/font exposes the loaded families through these variables. Referencing
+       the variables (not the raw family names) keeps the metric-adjusted
+       fallback in the stack, which avoids a layout shift while the font loads. */
+    --font-sans: var(--font-outfit), var(--font-inter), system-ui, sans-serif;
 
-    --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
-    --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
     --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
-    @keyframes shimmer-slide {
-        to {
-            transform: translate(calc(100cqw - 100%), 0);
-        }
+/* Declared outside @theme so it is always emitted: the skeleton shimmer is
+   applied via an arbitrary utility (animate-[shimmer_...]) rather than a
+   generated --animate-* utility, so Tailwind has no theme key to key off. */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
     }
 
-    @keyframes spin-around {
-        0% {
-            transform: translateZ(0) rotate(0);
-        }
-
-        15%,
-        35% {
-            transform: translateZ(0) rotate(90deg);
-        }
-
-        65%,
-        85% {
-            transform: translateZ(0) rotate(270deg);
-        }
-
-        100% {
-            transform: translateZ(0) rotate(360deg);
-        }
-    }
-
-    @keyframes shimmer {
-        0% {
-            transform: translateX(-100%);
-        }
-
-        100% {
-            transform: translateX(200%);
-        }
+    100% {
+        transform: translateX(200%);
     }
 }
 
@@ -56,20 +34,19 @@
         @apply bg-kino-dark text-white antialiased selection:bg-kino-blue/30;
         font-family: var(--font-sans);
     }
+
+    /* Every interactive element gets a visible focus ring by default. */
+    :focus-visible {
+        outline: 2px solid var(--color-kino-blue);
+        outline-offset: 2px;
+    }
 }
 
 @layer utilities {
-    .glass {
-        @apply bg-white/5 backdrop-blur-xl border border-white/10;
-    }
 
     /* Hero pill badge */
     .hero-pill {
         @apply flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-sm border border-white/10;
-    }
-
-    .glass-dark {
-        @apply bg-black/40 backdrop-blur-xl border border-white/5;
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -105,7 +82,6 @@
     .kino-scrollbar::-webkit-scrollbar-thumb {
         background: #2563eb;
         border-radius: 10px;
-        box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
     }
 
     .kino-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -120,98 +96,56 @@
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 9999;
-    /* Safe area insets for notched iPhones */
+    z-index: 50;
+    /* Safe area inset for notched iPhones */
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    /* Solid dark glass — avoids expensive backdrop-filter on mobile */
+    /* Solid dark glass — avoids an expensive backdrop-filter on mobile */
     background-color: rgba(8, 8, 12, 0.96);
     border-top: 1px solid rgba(255, 255, 255, 0.07);
-    /* GPU layer promotion */
-    will-change: transform;
     transform: translateZ(0);
-    -webkit-transform: translateZ(0);
 }
 
-/* On desktop with decent GPU allow backdrop blur */
 @media (min-width: 768px) {
     .mobile-tab-bar {
         display: none !important;
     }
 }
 
-/* ─── Mobile Performance Optimizations ─────────────────────────────────────── */
+/* ─── Mobile performance ──────────────────────────────────────────────────── */
 
-/* Promote fixed navbar to its own GPU compositing layer — prevents repaints
-   on scroll triggering full-page redraws */
-nav.fixed {
-    will-change: transform;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-}
-
-/* On mobile, replace expensive backdrop-blur with solid equivalents.
-   backdrop-blur forces the GPU to sample, blur, and composite every frame —
-   on mobile this is the #1 cause of dropped frames / jank. */
 @media (max-width: 768px) {
 
-    /* Navbar backdrop — solid instead of blurred */
-    [class*="backdrop-blur"] {
+    /* backdrop-filter forces the GPU to sample, blur and composite every frame,
+       which is the main source of scroll jank on mobile. Drop it for the one
+       full-width element that repaints on every scroll — the navbar — rather
+       than for every blurred surface in the app. Overlays and dropdowns keep
+       their blur, because they are short-lived and sit over static content. */
+    nav.fixed {
         -webkit-backdrop-filter: none !important;
         backdrop-filter: none !important;
-    }
-
-    /* Give the navbar a solid dark bg instead */
-    nav.fixed {
         background-color: rgba(10, 10, 10, 0.97) !important;
+        transform: translateZ(0);
     }
 
-    /* Smooth momentum scrolling on iOS */
     html,
     body {
-        -webkit-overflow-scrolling: touch;
         overscroll-behavior-y: none;
-    }
-
-    /* Use hardware-accelerated scrolling for movie rows */
-    [class*="overflow-x-auto"] {
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-    }
-
-    /* Promote all animated elements to own GPU layer — prevents repaint cascade */
-    [data-framer-motion],
-    [style*="will-change"] {
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
-    }
-
-    /* Reduce image decode overhead — let browser be lazy outside the hero */
-    img:not([fetchpriority="high"]):not([priority]) {
-        content-visibility: auto;
-    }
-
-    /* Contain layout and paint for card rows */
-    .movie-row-container {
-        contain: layout style;
-    }
-
-    /* Prevent expensive text decorations during scroll */
-    * {
-        text-decoration-skip-ink: none;
     }
 }
 
-/* Reduce animation complexity for users who prefer reduced motion */
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+
+/* This only covers CSS animations and transitions. JavaScript-driven motion
+   (Framer Motion, the WebGL eye, the GSAP cursor trail, the hero Ken Burns) is
+   gated separately via useReducedMotion in the components themselves. */
 @media (prefers-reduced-motion: reduce) {
-    * {
+
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
-}
-
-/* Prevent layout thrash from font loading */
-html {
-    font-display: swap;
-    text-rendering: optimizeSpeed;
 }

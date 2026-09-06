@@ -1,7 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-
 export default function KineticDotsLoader() {
     const dots = 4; // Increased to 4 for better rhythm
 

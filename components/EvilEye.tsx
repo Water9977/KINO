@@ -1,7 +1,8 @@
 'use client';
 
 import { Renderer, Program, Mesh, Triangle, Texture } from 'ogl';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import './EvilEye.css';
 
 interface EvilEyeProps {
@@ -26,7 +27,21 @@ function hexToVec3(hex: string): [number, number, number] {
   ];
 }
 
-function generateNoiseTexture(size = 256): Uint8Array {
+const NOISE_SIZE = 256;
+
+/**
+ * Generating the noise field costs ~524k samples (256² × 8 octaves) on the main
+ * thread. It is deterministic, so compute it once per page load and reuse it
+ * across mounts — including React Strict Mode's double-invoke in development.
+ */
+let cachedNoise: Uint8Array | null = null;
+
+function getNoiseData(): Uint8Array {
+  cachedNoise ??= generateNoiseTexture(NOISE_SIZE);
+  return cachedNoise;
+}
+
+function generateNoiseTexture(size = NOISE_SIZE): Uint8Array {
   const data = new Uint8Array(size * size * 4);
 
   function hash(x: number, y: number, s: number): number {
@@ -177,31 +192,56 @@ export default function EvilEye({
   backgroundColor = '#000000',
 }: EvilEyeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [webglFailed, setWebglFailed] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  // Latest prop values, read inside the render loop. Keeping them in a ref
+  // means a prop change updates a uniform instead of tearing down the whole
+  // WebGL context and regenerating the noise texture.
+  const propsRef = useRef({
+    eyeColor, intensity, pupilSize, irisWidth, glowIntensity,
+    scale, noiseScale, pupilFollow, flameSpeed, backgroundColor,
+  });
+  propsRef.current = {
+    eyeColor, intensity, pupilSize, irisWidth, glowIntensity,
+    scale, noiseScale, pupilFollow, flameSpeed, backgroundColor,
+  };
 
   useEffect(() => {
-    if (!containerRef.current) return;
     const container = containerRef.current;
-    const renderer = new Renderer({ alpha: true, premultipliedAlpha: false });
+    if (!container) return;
+
+    let renderer: InstanceType<typeof Renderer>;
+    try {
+      renderer = new Renderer({ alpha: true, premultipliedAlpha: false });
+    } catch (err) {
+      // No WebGL (old device, blocked context, headless browser). The eye is
+      // decorative, so degrade to nothing rather than crashing the landing page.
+      console.warn('[EvilEye] WebGL unavailable, skipping render.', err);
+      setWebglFailed(true);
+      return;
+    }
+
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
 
-    const noiseData = generateNoiseTexture(256);
     const noiseTexture = new Texture(gl, {
-      image: noiseData,
-      width: 256,
-      height: 256,
+      image: getNoiseData(),
+      width: NOISE_SIZE,
+      height: NOISE_SIZE,
       generateMipmaps: false,
       flipY: false,
+      minFilter: gl.LINEAR,
+      magFilter: gl.LINEAR,
+      wrapS: gl.REPEAT,
+      wrapT: gl.REPEAT,
     });
-    (noiseTexture as any).minFilter = gl.LINEAR;
-    (noiseTexture as any).magFilter = gl.LINEAR;
-    (noiseTexture as any).wrapS = gl.REPEAT;
-    (noiseTexture as any).wrapT = gl.REPEAT;
 
     const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+    const tracksPointer = pupilFollow !== 0;
 
     function onMouseMove(e: MouseEvent) {
-      const rect = container.getBoundingClientRect();
+      const rect = container!.getBoundingClientRect();
       mouse.tx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.ty = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
     }
@@ -211,22 +251,14 @@ export default function EvilEye({
       mouse.ty = 0;
     }
 
-    window.addEventListener('mousemove', onMouseMove);
-    container.addEventListener('mouseleave', onMouseLeave);
-
-    let program: InstanceType<typeof Program>;
-
-    function resize() {
-      renderer.setSize(container.offsetWidth, container.offsetHeight);
-      if (program) {
-        program.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height];
-      }
+    // Only listen when the pupil actually follows the cursor.
+    if (tracksPointer) {
+      window.addEventListener('mousemove', onMouseMove, { passive: true });
+      container.addEventListener('mouseleave', onMouseLeave);
     }
-    window.addEventListener('resize', resize);
-    resize();
 
     const geometry = new Triangle(gl);
-    program = new Program(gl, {
+    const program = new Program(gl, {
       vertex: vertexShader,
       fragment: fragmentShader,
       uniforms: {
@@ -247,30 +279,79 @@ export default function EvilEye({
       },
     });
 
+    function resize() {
+      renderer.setSize(container!.offsetWidth, container!.offsetHeight);
+      program.uniforms.uResolution.value = [
+        gl.canvas.width,
+        gl.canvas.height,
+        gl.canvas.width / gl.canvas.height,
+      ];
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
     const mesh = new Mesh(gl, { geometry, program });
     container.appendChild(gl.canvas);
 
-    let animationFrameId: number;
+    let animationFrameId: number | null = null;
 
     function update(time: number) {
       animationFrameId = requestAnimationFrame(update);
+
+      const p = propsRef.current;
       mouse.x += (mouse.tx - mouse.x) * 0.05;
       mouse.y += (mouse.ty - mouse.y) * 0.05;
+
       program.uniforms.uMouse.value = [mouse.x, mouse.y];
       program.uniforms.uTime.value = time * 0.001;
+      program.uniforms.uIntensity.value = p.intensity;
+      program.uniforms.uGlowIntensity.value = p.glowIntensity;
+      program.uniforms.uScale.value = p.scale;
+      program.uniforms.uFlameSpeed.value = p.flameSpeed;
+      program.uniforms.uEyeColor.value = hexToVec3(p.eyeColor);
+      program.uniforms.uBgColor.value = hexToVec3(p.backgroundColor);
+
       renderer.render({ scene: mesh });
     }
-    animationFrameId = requestAnimationFrame(update);
+
+    // Pause the loop while the tab is hidden so a backgrounded landing page
+    // stops burning GPU and battery.
+    function handleVisibility() {
+      if (document.hidden) {
+        if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      } else if (animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(update);
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    if (reduceMotion) {
+      // Draw a single static frame instead of animating.
+      update(0);
+      if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    } else {
+      animationFrameId = requestAnimationFrame(update);
+    }
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+      document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', onMouseMove);
-      container.removeEventListener('mouseleave', onMouseLeave);
+      if (tracksPointer) {
+        window.removeEventListener('mousemove', onMouseMove);
+        container.removeEventListener('mouseleave', onMouseLeave);
+      }
       if (container.contains(gl.canvas)) container.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [eyeColor, intensity, pupilSize, irisWidth, glowIntensity, scale, noiseScale, pupilFollow, flameSpeed, backgroundColor]);
+    // Only structural inputs rebuild the context; visual props flow through
+    // propsRef and are applied per frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduceMotion, pupilFollow]);
+
+  if (webglFailed) return null;
 
   return <div ref={containerRef} className="evil-eye-container" />;
 }
