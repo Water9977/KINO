@@ -20,9 +20,10 @@ interface VideoPlayerProps {
 /**
  * The embed provider that actually serves playback.
  *
- * The iframe is sandboxed: the embed gets scripts and its own origin, but
- * explicitly NOT `allow-top-navigation` or `allow-popups`, so it cannot
- * redirect the user off Kino or spawn pop-unders.
+ * Note: this player is intentionally NOT sandboxed. vidlink.pro detects the
+ * sandbox attribute and refuses to play, showing "Please Disable Sandbox"
+ * instead of the video. The `frame-src` allowlist in the CSP (next.config.ts)
+ * is what restricts which origin may be framed here.
  */
 const STREAM_PROVIDER = {
     name: "vidlink",
@@ -150,9 +151,8 @@ export const VideoPlayer = ({
                             className="absolute inset-0 w-full h-full rounded-2xl bg-[#050505]"
                             onLoad={() => setIsFrameLoading(false)}
                             allowFullScreen
-                            referrerPolicy="no-referrer"
-                            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                            referrerPolicy="origin"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         />
 
                         {isFrameLoading && (
