@@ -89,6 +89,76 @@
     }
 }
 
+/* ─── Entrance animations ─────────────────────────────────────────────────── */
+
+/* These used to be Framer Motion `initial={{ opacity: 0 }}` states. Framer
+   server-renders the initial style, so the HTML that reached the browser had
+   every card, the navbar and the whole page wrapper at opacity:0 until the JS
+   bundle had downloaded and hydrated (blank page without JS, LCP gated on JS).
+   Pure CSS animations run without JavaScript and finish at the element's natural
+   style, so the server HTML is visible from the first paint.
+
+   They are only defined when the visitor has not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+    @keyframes kino-page-in {
+        from {
+            opacity: 0.85;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes kino-card-in {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes kino-logo-glow {
+
+        0%,
+        100% {
+            opacity: 0.35;
+        }
+
+        50% {
+            opacity: 0.8;
+        }
+    }
+
+    .page-enter {
+        animation: kino-page-in 0.35s ease-out;
+    }
+
+    /* `backwards` holds the first keyframe during the stagger delay, then lets go,
+       so the card ends on its normal (visible) style. */
+    .card-enter {
+        animation: kino-card-in 0.5s ease-out backwards;
+    }
+
+    /* The glow behind the "O" pulses on a pseudo-element's opacity, which the
+       compositor handles. The old Framer loop rewrote an inline text-shadow every
+       frame, forever, on a nav element present on every page. */
+    .kino-logo-o::before {
+        content: "";
+        position: absolute;
+        inset: -0.1em -0.2em;
+        z-index: -1;
+        border-radius: 9999px;
+        background: radial-gradient(closest-side, rgba(37, 99, 235, 0.55), rgba(37, 99, 235, 0));
+        opacity: 0.35;
+        animation: kino-logo-glow 3s ease-in-out infinite;
+    }
+}
+
 /* ─── Mobile Tab Bar ──────────────────────────────────────────────────────── */
 
 .mobile-tab-bar {

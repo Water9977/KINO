@@ -141,7 +141,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
     };
 
     return (
-        <main className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden">
+        <div className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
@@ -186,7 +186,10 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
             </div>
 
             {/* Details */}
-            <div className="relative z-10 mx-auto max-w-[1600px] px-4 md:px-6 lg:px-10 mt-8 mb-16">
+            <div
+                id="title-details"
+                className="relative z-10 mx-auto max-w-[1600px] px-4 md:px-6 lg:px-10 mt-8 mb-16"
+            >
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                     <div className="lg:col-span-2 space-y-8">
                         <div className="space-y-4">
@@ -239,7 +242,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                     <User size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                                         Director
                                     </p>
                                     <p className="text-sm font-black text-white">{director}</p>
@@ -259,7 +262,11 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                             The Cast
                         </h2>
                     </div>
-                    <ul className="flex gap-4 overflow-x-auto px-4 md:px-6 lg:px-10 pb-8 no-scrollbar list-none">
+                    <ul
+                        tabIndex={0}
+                        aria-label="Cast members"
+                        className="flex gap-4 overflow-x-auto px-4 md:px-6 lg:px-10 pb-8 no-scrollbar list-none"
+                    >
                         {cast.map((actor) => {
                             const profileUrl = tmdbImage(actor.profile_path, "w185");
                             return (
@@ -284,7 +291,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                     </div>
                                     <h3 className="text-sm font-bold text-white truncate">{actor.name}</h3>
                                     {actor.character && (
-                                        <p className="text-[11px] text-gray-500 font-medium truncate">
+                                        <p className="text-[11px] text-gray-400 font-medium truncate">
                                             {actor.character}
                                         </p>
                                     )}
@@ -302,7 +309,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                     </div>
                 </div>
             )}
-        </main>
+        </div>
     );
 }
 

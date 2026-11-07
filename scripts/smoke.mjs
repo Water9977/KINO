@@ -54,5 +54,16 @@ const long = await (await fetch(`${base}/search?q=${"x".repeat(5000)}`)).text();
 const title = long.match(/<title>([^<]*)<\/title>/)?.[1] ?? "";
 report(title.length > 0 && title.length < 130, "very long search query is capped in <title>", `(${title.length} chars)`);
 
+// Structure that regressed before and is cheap to guard: one <main> landmark per page, and server
+// HTML that is not hidden behind an inline `opacity:0` waiting for hydration (blank page without JS).
+const structureRoutes = ["/browse", "/movies", "/tv", "/discover", "/search?q=cars", "/category/popular", "/watch/550"];
+for (const path of structureRoutes) {
+    const html = await (await fetch(base + path)).text();
+    const mains = (html.match(/<main[\s>]/g) ?? []).length;
+    report(mains === 1, `${path} has exactly one <main>`, mains === 1 ? "" : `found ${mains}`);
+    const hidden = (html.match(/style="opacity:0/g) ?? []).length;
+    report(hidden === 0, `${path} server HTML is not hidden behind opacity:0`, hidden === 0 ? "" : `${hidden} elements`);
+}
+
 console.log(failures === 0 ? "\nAll smoke checks passed." : `\n${failures} smoke check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

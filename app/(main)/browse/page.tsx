@@ -48,7 +48,7 @@ export default async function BrowsePage() {
     ];
 
     return (
-        <main className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#2563eb] selection:text-[#0a0a0a] pb-20">
+        <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#2563eb] selection:text-[#0a0a0a] pb-20">
             {/* The hero is visual; the page still needs one real heading for
                 screen readers and document outline. */}
             <h1 className="sr-only">Browse movies and TV shows on Kino</h1>
@@ -65,6 +65,6 @@ export default async function BrowsePage() {
                     />
                 ))}
             </div>
-        </main>
+        </div>
     );
 }

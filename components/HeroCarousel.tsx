@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Play, Star, Calendar } from "lucide-react";
+import { Play, Pause, Star, Calendar } from "lucide-react";
 
 import { tmdbImage } from "@/lib/tmdb";
 import type { Movie } from "./MovieCard";
@@ -16,6 +16,40 @@ interface HeroCarouselProps {
 
 const SLIDE_DURATION_MS = 8000;
 
+// The visitor's "pause the slideshow" choice, kept for the browser session so it survives moving
+// between pages. A tiny external store: `useSyncExternalStore` reads it without a hydration
+// mismatch (the server snapshot is always "not paused"), and an in-memory copy keeps the control
+// working when sessionStorage is blocked.
+const PAUSE_STORAGE_KEY = "kino:carousel-paused";
+let pausedInMemory = false;
+const pauseListeners = new Set<() => void>();
+
+function subscribePaused(listener: () => void) {
+    pauseListeners.add(listener);
+    return () => {
+        pauseListeners.delete(listener);
+    };
+}
+
+function readPaused() {
+    try {
+        return sessionStorage.getItem(PAUSE_STORAGE_KEY) === "1";
+    } catch {
+        return pausedInMemory;
+    }
+}
+
+function writePaused(paused: boolean) {
+    pausedInMemory = paused;
+    try {
+        if (paused) sessionStorage.setItem(PAUSE_STORAGE_KEY, "1");
+        else sessionStorage.removeItem(PAUSE_STORAGE_KEY);
+    } catch {
+        // storage unavailable (private mode, blocked): the in-memory flag still applies
+    }
+    pauseListeners.forEach((listener) => listener());
+}
+
 const KEN_BURNS_VARIANTS = [
     { initial: { scale: 1, x: 0, y: 0 }, animate: { scale: 1.08, x: -20, y: -10 } },
     { initial: { scale: 1.05, x: -15, y: 0 }, animate: { scale: 1, x: 0, y: -15 } },
@@ -26,52 +60,50 @@ const KEN_BURNS_VARIANTS = [
 export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+    // Hover / keyboard focus inside the carousel pauses it temporarily.
     const [isPaused, setIsPaused] = useState(false);
-    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // Bumped to restart the interval after the visitor picks a slide themselves.
+    const [restart, setRestart] = useState(0);
+    // The visitor's explicit Pause button (WCAG 2.2.2: moving content needs a way to stop it that
+    // does not depend on a mouse pointer).
+    const userPaused = useSyncExternalStore(subscribePaused, readPaused, () => false);
     const reduceMotion = useReducedMotion();
 
     const slideCount = movies?.length ?? 0;
+    const rotating = !reduceMotion && !isPaused && !userPaused && slideCount > 1;
 
     const advanceSlide = useCallback(() => {
         setCurrentIndex((prev) => (slideCount > 0 ? (prev + 1) % slideCount : 0));
     }, [slideCount]);
 
-    const resetTimer = useCallback(() => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = setInterval(advanceSlide, SLIDE_DURATION_MS);
-    }, [advanceSlide]);
-
-    // Auto-advance, paused on hover/focus and while the tab is in the background.
+    // Auto-advance. The interval lives entirely in this effect: whether it should run is decided in
+    // one place (`rotating`), and anything that must restart it changes `restart`. Starting it from
+    // an event handler (as before) bypassed that decision, so slides kept advancing under a hovered
+    // or focused carousel, and the stray timer outlived the component.
     useEffect(() => {
-        if (reduceMotion || isPaused || slideCount <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            return;
-        }
+        if (!rotating) return;
 
-        resetTimer();
-
+        let id = setInterval(advanceSlide, SLIDE_DURATION_MS);
         const handleVisibility = () => {
-            if (document.hidden) {
-                if (timerRef.current) clearInterval(timerRef.current);
-            } else {
-                resetTimer();
-            }
+            clearInterval(id);
+            if (!document.hidden) id = setInterval(advanceSlide, SLIDE_DURATION_MS);
         };
         document.addEventListener("visibilitychange", handleVisibility);
 
         return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
+            clearInterval(id);
             document.removeEventListener("visibilitychange", handleVisibility);
         };
-    }, [resetTimer, reduceMotion, isPaused, slideCount]);
+    }, [advanceSlide, rotating, restart]);
 
-    // Shrink hero content while the mobile virtual keyboard is open.
+    // Shrink hero content while the mobile virtual keyboard is open. Pinch-zoom also shrinks the
+    // visual viewport, so only count it as the keyboard when the page is not zoomed.
     useEffect(() => {
         const vv = window.visualViewport;
         if (!vv) return;
 
         const handleViewportResize = () => {
-            setIsKeyboardOpen(window.innerHeight - vv.height > 150);
+            setIsKeyboardOpen(vv.scale <= 1.05 && window.innerHeight - vv.height > 150);
         };
 
         vv.addEventListener("resize", handleViewportResize);
@@ -81,12 +113,14 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
     const goToSlide = (idx: number) => {
         hapticTick();
         setCurrentIndex(idx);
-        resetTimer();
+        setRestart((n) => n + 1);
     };
 
     if (slideCount === 0) return null;
 
-    const currentMovie = movies[currentIndex];
+    // `movies` can shrink under a stored index; never read past the end.
+    const index = Math.min(currentIndex, slideCount - 1);
+    const currentMovie = movies[index];
     const isTv = currentMovie.media_type === "tv" || (!currentMovie.title && !!currentMovie.name);
     const title = currentMovie.title || currentMovie.name || "Untitled";
     const date = currentMovie.release_date || currentMovie.first_air_date;
@@ -95,7 +129,7 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
 
     // Derived from the index rather than read from a ref during render — a ref
     // is not reactive, so React could render a stale variant.
-    const kbVariant = KEN_BURNS_VARIANTS[currentIndex % KEN_BURNS_VARIANTS.length];
+    const kbVariant = KEN_BURNS_VARIANTS[index % KEN_BURNS_VARIANTS.length];
 
     return (
         <section
@@ -107,7 +141,9 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
             onFocusCapture={() => setIsPaused(true)}
             onBlurCapture={() => setIsPaused(false)}
         >
-            <AnimatePresence mode="wait">
+            {/* `initial={false}`: the first slide renders in its final state. Its fade-in used to be
+                baked into the server HTML as opacity:0, which hid the LCP element until hydration. */}
+            <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                     key={currentMovie.id}
                     initial={{ opacity: 0 }}
@@ -129,7 +165,7 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
                                 alt=""
                                 fill
                                 className="object-cover"
-                                priority={currentIndex === 0}
+                                priority={index === 0}
                                 sizes="100vw"
                                 quality={80}
                             />
@@ -144,10 +180,18 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
 
             {/* pt-28 keeps the meta pills clear of the fixed navbar on short viewports. */}
             <div className="relative z-30 flex h-full items-end pt-28 pb-24 md:pb-40 px-4 md:px-10 w-full pointer-events-none">
-                <div className="max-w-4xl w-full pointer-events-auto">
-                    <AnimatePresence mode="wait">
+                <div
+                    className="max-w-4xl w-full pointer-events-auto"
+                    // A screen reader should not be interrupted by an automatic slide change, but should
+                    // hear the new slide when the visitor changes it themselves.
+                    aria-live={rotating ? "off" : "polite"}
+                >
+                    <AnimatePresence mode="wait" initial={false}>
                         <motion.div
                             key={`content-${currentMovie.id}`}
+                            role="group"
+                            aria-roledescription="slide"
+                            aria-label={`${index + 1} of ${slideCount}`}
                             initial={reduceMotion ? false : { opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
@@ -222,18 +266,32 @@ export const HeroCarousel = ({ movies }: HeroCarouselProps) => {
             </div>
 
             <div className="absolute bottom-24 md:bottom-36 right-6 md:right-10 z-30 flex gap-2 items-center">
+                {slideCount > 1 && (
+                    <button
+                        type="button"
+                        onClick={() => writePaused(!userPaused)}
+                        aria-label={userPaused ? "Play slideshow" : "Pause slideshow"}
+                        className="mr-1 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    >
+                        {userPaused ? (
+                            <Play size={14} fill="currentColor" aria-hidden="true" />
+                        ) : (
+                            <Pause size={14} fill="currentColor" aria-hidden="true" />
+                        )}
+                    </button>
+                )}
                 {movies.map((movie, idx) => (
                     <button
                         key={movie.id}
                         onClick={() => goToSlide(idx)}
                         aria-label={`Show slide ${idx + 1} of ${slideCount}`}
-                        aria-current={idx === currentIndex ? "true" : undefined}
+                        aria-current={idx === index ? "true" : undefined}
                         // 24px hit area with a smaller visible bar inside, so the
                         // control meets minimum target size without looking chunky.
                         className="group grid h-6 w-6 place-items-center focus-visible:outline-none"
                     >
                         <span
-                            className={`h-1.5 rounded-full transition-all duration-500 group-focus-visible:ring-2 group-focus-visible:ring-white ${idx === currentIndex ? "w-6 bg-white" : "w-1.5 bg-white/25 group-hover:bg-white/50"
+                            className={`h-1.5 rounded-full transition-all duration-500 group-focus-visible:ring-2 group-focus-visible:ring-white ${idx === index ? "w-6 bg-white" : "w-1.5 bg-white/25 group-hover:bg-white/50"
                                 }`}
                         />
                     </button>

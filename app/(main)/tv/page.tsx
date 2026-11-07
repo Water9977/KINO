@@ -34,7 +34,7 @@ export default async function TVShowsPage() {
     ];
 
     return (
-        <main className="min-h-screen bg-[#0a0a0a] text-white">
+        <div className="min-h-screen bg-[#0a0a0a] text-white">
             <h1 className="sr-only">TV shows on Kino</h1>
 
             <HeroCarousel movies={toCardItems(trending?.results?.slice(0, 8), "tv")} />
@@ -44,6 +44,6 @@ export default async function TVShowsPage() {
                     <MovieRow key={row.title} title={row.title} movies={row.movies} viewAllLink={row.link} />
                 ))}
             </div>
-        </main>
+        </div>
     );
 }

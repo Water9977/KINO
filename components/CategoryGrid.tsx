@@ -16,17 +16,31 @@ interface CategoryGridProps {
     filters?: DiscoverFilters;
 }
 
-export function CategoryGrid({
-    initialMovies,
-    category,
-    type = "movie",
-    filters,
-}: CategoryGridProps) {
+/**
+ * Infinite-scroll grid.
+ *
+ * The inner grid is re-mounted whenever the query changes (category, type or any filter). That
+ * is the whole fix for a stale-response race: the FilterBar only changes the URL, so the old
+ * grid instance used to survive a filter change, and a request still in flight for the previous
+ * filter landed afterwards, appended old-filter titles to the new grid and overwrote its page
+ * counter (so the new filter's next pages were skipped). A fresh instance owns fresh state, and
+ * the abandoned one can no longer touch what is on screen.
+ */
+export function CategoryGrid(props: CategoryGridProps) {
+    // Object props get a new identity on every parent render; the serialised value only changes
+    // when the query really does.
+    const queryKey = JSON.stringify({ category: props.category, type: props.type ?? "movie", filters: props.filters });
+    return <CategoryGridInner key={queryKey} {...props} />;
+}
+
+function CategoryGridInner({ initialMovies, category, type = "movie", filters }: CategoryGridProps) {
     const [movies, setMovies] = useState<TmdbListItem[]>(initialMovies);
     const [page, setPage] = useState(2);
     const [isLoading, setIsLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    /** Spoken to screen readers; the visual grid just grows. */
+    const [announcement, setAnnouncement] = useState("");
 
     const { ref, inView } = useInView({ rootMargin: "400px" });
 
@@ -34,11 +48,6 @@ export function CategoryGrid({
     // making `loadMore` depend on the isLoading state (which would re-create it
     // on every toggle and retrigger the effect).
     const loadingRef = useRef(false);
-
-    // A stable key for the current query. Object props get a new identity on
-    // every parent render, so comparing serialized values avoids resetting the
-    // grid for a filter set that hasn't actually changed.
-    const queryKey = JSON.stringify({ category, type, filters });
 
     const loadMore = useCallback(async () => {
         if (loadingRef.current) return;
@@ -55,6 +64,7 @@ export function CategoryGrid({
             });
             setPage(result.nextPage);
             setHasMore(result.hasMore);
+            setAnnouncement(result.hasMore ? "More titles loaded." : "You've reached the end of the list.");
         } catch (err) {
             console.error("Failed to load more titles:", err);
             setError("We couldn't load more titles. Check your connection and try again.");
@@ -62,10 +72,10 @@ export function CategoryGrid({
             loadingRef.current = false;
             setIsLoading(false);
         }
-        // `filters` is compared via queryKey; including the object itself would
-        // re-create this callback on every render.
+        // `filters` is covered by the component's `key` (see CategoryGrid): a different filter set
+        // is a different instance, so this callback only ever sees one.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [category, page, type, queryKey]);
+    }, [category, page, type]);
 
     useEffect(() => {
         if (inView && hasMore && !error) {
@@ -73,23 +83,18 @@ export function CategoryGrid({
         }
     }, [inView, hasMore, error, loadMore]);
 
-    // Reset the grid whenever the underlying query changes.
-    useEffect(() => {
-        setMovies(initialMovies);
-        setPage(2);
-        setHasMore(true);
-        setError(null);
-        // initialMovies is re-fetched by the server for each queryKey.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queryKey]);
-
     return (
         <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
                 {movies.map((movie, idx) => (
-                    <MovieCard key={`${movie.id}-${idx}`} movie={movie} index={idx} />
+                    <MovieCard key={`${movie.id}-${idx}`} movie={movie} index={idx} headingLevel="h2" />
                 ))}
             </div>
+
+            {/* One persistent region: its text changing is what makes assistive tech speak. */}
+            <p role="status" className="sr-only">
+                {announcement}
+            </p>
 
             {error && (
                 <div
@@ -113,13 +118,13 @@ export function CategoryGrid({
             )}
 
             {hasMore && !error && (
-                <div ref={ref} className="flex justify-center p-8 w-full mt-8" aria-live="polite">
-                    {isLoading && <KineticDotsLoader />}
+                <div ref={ref} className="flex justify-center p-8 w-full mt-8">
+                    {isLoading && <KineticDotsLoader label="Loading more titles" />}
                 </div>
             )}
 
             {!hasMore && !error && movies.length > 0 && (
-                <p className="py-8 text-center text-gray-500">
+                <p className="py-8 text-center text-gray-400">
                     You&apos;ve reached the end of the list.
                 </p>
             )}

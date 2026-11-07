@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "framer-motion";
@@ -9,8 +10,30 @@ import CinemaFlipWords from "@/components/CinemaFlipWords";
 const EvilEye = dynamic(() => import("@/components/EvilEye"), { ssr: false });
 const PosterTrail = dynamic(() => import("@/components/PosterTrail"), { ssr: false });
 
+/** True when the visitor has a real mouse/trackpad and has not asked to save data. */
+function canUsePointerTrail() {
+    if (typeof window === "undefined") return false;
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const saveData =
+        (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    return finePointer && !saveData;
+}
+
 export function LandingHero() {
     const reduceMotion = useReducedMotion();
+
+    // The poster trail is decoration that only exists once a pointer moves, yet it downloaded
+    // twenty TMDB posters plus the GSAP chunk on every visit, including phones and metered links.
+    // Mount it on the first pointer movement instead. This also keeps the first client render
+    // identical to the server's (it used to depend on the reduced-motion media query, which made
+    // reduced-motion visitors hit a hydration error on this page).
+    const [trailArmed, setTrailArmed] = useState(false);
+    useEffect(() => {
+        if (reduceMotion || !canUsePointerTrail()) return;
+        const arm = () => setTrailArmed(true);
+        window.addEventListener("pointermove", arm, { once: true, passive: true });
+        return () => window.removeEventListener("pointermove", arm);
+    }, [reduceMotion]);
 
     // `min-h-screen` + vertical padding rather than a hard `h-screen` crop:
     // on short viewports (landscape phones, small laptops) the fixed height was
@@ -20,7 +43,7 @@ export function LandingHero() {
             className="relative flex min-h-screen w-full flex-col items-center justify-center gap-5 overflow-x-hidden px-6 py-16 text-center"
             style={{ background: "#0a0a0a" }}
         >
-            {!reduceMotion && <PosterTrail />}
+            {trailArmed && !reduceMotion && <PosterTrail />}
 
             <motion.div
                 initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}

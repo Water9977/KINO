@@ -89,7 +89,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         : `${baseTitle} ${type === "tv" ? "TV Shows" : "Movies"}`;
 
     return (
-        <main className="min-h-screen bg-kino-dark text-white selection:bg-[#2563eb] selection:text-[#0a0a0a]">
+        <div className="min-h-screen bg-kino-dark text-white selection:bg-[#2563eb] selection:text-[#0a0a0a]">
             <div className="pt-32 px-6 max-w-7xl mx-auto pb-20">
                 <div className="flex items-center gap-4 mb-4">
                     <div className="w-1.5 h-8 bg-[#2563eb] rounded-full" aria-hidden="true" />
@@ -112,11 +112,11 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         }
                     />
                 ) : (
-                    <p className="py-20 text-center text-gray-500">
+                    <p className="py-20 text-center text-gray-400">
                         No titles found for this selection.
                     </p>
                 )}
             </div>
-        </main>
+        </div>
     );
 }

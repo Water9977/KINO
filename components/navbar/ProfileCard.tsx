@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Linkedin, Github, Instagram } from "lucide-react";
@@ -35,7 +35,13 @@ const SOCIALS = [
     },
 ] as const;
 
-export function ProfileCard({ onClose }: { onClose: () => void }) {
+export function ProfileCard({
+    onClose,
+    returnFocusRef,
+}: {
+    onClose: () => void;
+    returnFocusRef?: RefObject<HTMLElement | null>;
+}) {
     const [taps, setTaps] = useState(0);
     const [showEasterEgg, setShowEasterEgg] = useState(false);
 
@@ -53,7 +59,7 @@ export function ProfileCard({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <Modal onClose={onClose} label="About Kino">
+        <Modal onClose={onClose} label="About Kino" returnFocusRef={returnFocusRef}>
             <GlowCard
                 customSize
                 glowColor="blue"

@@ -7,6 +7,9 @@ import './ImageTrail.css';
 /** Pointer travel (px) required before the next poster is revealed. */
 const DISTANCE_THRESHOLD = 80;
 
+/** How long the pointer must be still before the animation loop stops (ms). */
+const IDLE_STOP_MS = 1000;
+
 function lerp(a: number, b: number, n: number): number {
   return (1 - n) * a + n * b;
 }
@@ -46,7 +49,8 @@ class ImageTrail {
   private lastMousePos = { x: 0, y: 0 };
   private cacheMousePos = { x: 0, y: 0 };
   private frameId: number | null = null;
-  private started = false;
+  private running = false;
+  private lastMoveAt = 0;
   private destroyed = false;
 
   constructor(container: HTMLDivElement) {
@@ -74,9 +78,11 @@ class ImageTrail {
     const rect = this.container.getBoundingClientRect();
     this.mousePos = getPointerPos(ev, rect);
 
-    // Start the loop on first movement so an idle page costs nothing.
-    if (!this.started) {
-      this.started = true;
+    this.lastMoveAt = performance.now();
+
+    // Start (or restart) the loop on movement so an idle page costs nothing.
+    if (!this.running) {
+      this.running = true;
       this.cacheMousePos = { ...this.mousePos };
       this.lastMousePos = { ...this.mousePos };
       this.frameId = requestAnimationFrame(this.render);
@@ -85,6 +91,14 @@ class ImageTrail {
 
   private render = () => {
     if (this.destroyed) return;
+
+    // Park the loop once the pointer has been still for a moment (it used to re-schedule itself
+    // at 60 Hz forever after the first movement). The next movement restarts it.
+    if (performance.now() - this.lastMoveAt > IDLE_STOP_MS) {
+      this.running = false;
+      this.frameId = null;
+      return;
+    }
 
     const dx = this.mousePos.x - this.lastMousePos.x;
     const dy = this.mousePos.y - this.lastMousePos.y;

@@ -320,7 +320,9 @@ export default function EvilEye({
       if (document.hidden) {
         if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
-      } else if (animationFrameId === null) {
+      } else if (!reduceMotion && animationFrameId === null) {
+        // Not under reduced motion: that mode draws one static frame and must stay still when the
+        // tab comes back, instead of silently starting the animation loop.
         animationFrameId = requestAnimationFrame(update);
       }
     }

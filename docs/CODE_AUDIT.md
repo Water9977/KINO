@@ -10,6 +10,32 @@
 
 ---
 
+## ⚑ Follow-up — 2026-11-07 (accessibility, embed risk, performance)
+
+From the 2026-11-04 re-audit (WP7, WP8 and the web half of WP12). Each row was reproduced against the
+previous build with a Playwright check first, then re-run after the change. axe-core went from **189
+violating nodes to 0** across 9 routes × desktop/mobile.
+
+| Finding | What changed |
+|---|---|
+| WEB-006 | `template.tsx`, `MovieCard`, `KinoLogo`, navbar, tab bar and the hero no longer server-render as `opacity:0`. Entrances are CSS (`.page-enter`, `.card-enter`) or `initial={false}`. Server HTML hidden by an inline `opacity:0`: **148 elements → 0**. |
+| WEB-007 | One `<main>` per page (pages use `<div>` inside the layout's `<main>`). |
+| WEB-200 | Embed stays unsandboxed (the provider refuses sandboxes). Added a `beforeunload` guard while a title is playing, and trimmed `allow` to `autoplay; encrypted-media; picture-in-picture` (+ `allowFullScreen`). **Not tested against the real provider.** |
+| WEB-202/203/204/205/206 | Player: derived loading state (re-clicking the active episode no longer leaves a permanent spinner), 12 s watchdog with Retry, persistent "Reload player", focus moves into the player on Play, a skip link, browsing a season no longer reloads the stream, season pills are plain toggle buttons instead of a half-built tab pattern. |
+| WEB-220/221/222 | Carousel: interval lives in one effect (no more advancing under hover/focus/reduced motion), a Pause/Play button (persisted per session), slide `role=group` labels, `aria-live` off while rotating, pinch-zoom no longer collapses the synopsis. |
+| WEB-225 | `CategoryGrid` remounts per query, so a slow response for the old filter cannot land in the new grid. |
+| WEB-227 | Loader is a `role=status` with text; grid and search have persistent live regions; search shows "No results" / "Search is busy" rows. |
+| WEB-230/231* | Filter selects are a real select-only combobox (`aria-activedescendant`, Tab commits, type-ahead, name includes the value). *231 not done.* |
+| WEB-235/236 | Search is an ARIA combobox (arrows + Enter), collapsed input is `inert`, form is `role=search`, no more 200 ms blur timer. |
+| WEB-237/238 | Drawer sits above the tab bar, traps focus and returns it; `Modal`'s effect no longer depends on the caller's `onClose`; scroll lock is reference-counted. |
+| WEB-240 | Metadata gray-500/600 → gray-400, blue text → blue-400, placeholder and tab-bar labels raised. |
+| WEB-210/212/213/214/215/216 | Reduced-motion fixes (eye loop, flip words, global `MotionConfig`), logo glow is a compositor-only CSS pulse (178 style writes / 3 s → 0), landing posters + GSAP load on first pointer movement and not at all on touch (**20 image requests → 0**), trail loop parks when idle, no hydration error under reduced motion. |
+
+Not done from that batch: WEB-211 (WebGL context loss), WEB-231 (filter default label), WEB-024 (RSC payload trim),
+WEB-016/017 (service worker), WEB-026 (TMDB attribution; belongs with the compliance pack).
+
+---
+
 ## ⚑ Remediation status — updated 2026-09-06
 
 Everything below was fixed in the follow-up pass. Verified by `npm run check`
