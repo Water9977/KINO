@@ -7,6 +7,10 @@ import type {
     TmdbProviderResponse,
     TmdbSeasonDetails,
 } from "./types";
+import { hasOwnKey } from "@/lib/validate";
+import { TmdbError, fetchTmdbJson, settleAll } from "./tmdb-fetch";
+
+export { TmdbError } from "./tmdb-fetch";
 
 const BASE_URL = process.env.TMDB_BASE_URL ?? "https://api.themoviedb.org/3";
 const API_KEY = process.env.TMDB_API_KEY;
@@ -22,8 +26,12 @@ export const TMDB_CONFIG = {
     revalidateSeconds: 300,
     /** Per-attempt request timeout. */
     timeoutMs: 8000,
-    /** Total attempts before giving up and returning an empty payload. */
+    /** Total attempts for a retryable failure before the request throws a TmdbError. */
     retries: 3,
+    /** First retry delay; doubles after each failed attempt (500 ms, 1 s). */
+    baseBackoffMs: 500,
+    /** Upper bound on how long a Retry-After header may hold a request. */
+    maxRetryAfterMs: 3000,
     /** Minimum vote count when sorting by rating, so obscure titles don't win. */
     minVotesForTopRated: 1000,
     /** Region used for watch-provider availability. */
@@ -53,53 +61,36 @@ export function tmdbImage(
     return `${IMAGE_BASE}/${size}${path}`;
 }
 
-// ─── Resilient fetch with exponential backoff retry ──────────────────────────
+// ─── Fetch ───────────────────────────────────────────────────────────────────
 
-function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const EMPTY_PAYLOAD = { results: [], genres: [], success: false };
-
+/**
+ * Fetches a TMDB URL and returns its JSON, or throws a `TmdbError`. It never resolves to an empty
+ * payload on failure: callers decide how to degrade (see `settlePageData`), and ISR pages rely on
+ * the throw to keep serving their last good version.
+ */
 async function tmdbFetch<T>(url: string): Promise<T> {
-    for (let attempt = 0; attempt < TMDB_CONFIG.retries; attempt++) {
-        try {
-            const res = await fetch(url, {
-                next: { revalidate: TMDB_CONFIG.revalidateSeconds },
-                signal: AbortSignal.timeout(TMDB_CONFIG.timeoutMs),
-            });
-
-            if (!res.ok) {
-                // TMDB rate limit — respect Retry-After and try again.
-                if (res.status === 429) {
-                    const retryAfter = Number(res.headers.get("Retry-After") || 2) * 1000;
-                    await sleep(retryAfter);
-                    continue;
-                }
-                console.warn(`[TMDB] HTTP ${res.status} for ${redact(url)}`);
-                return EMPTY_PAYLOAD as T;
-            }
-
-            return (await res.json()) as T;
-        } catch (err) {
-            const isLast = attempt === TMDB_CONFIG.retries - 1;
-            const message = err instanceof Error ? err.message : String(err);
-            console.warn(`[TMDB] attempt ${attempt + 1} failed: ${message}`);
-            if (!isLast) {
-                // Exponential backoff: 500ms, 1000ms, 2000ms
-                await sleep(500 * Math.pow(2, attempt));
-            }
-        }
+    if (!API_KEY) {
+        // Surfaces at build time for static routes instead of baking an empty site into a deploy.
+        throw new TmdbError("auth", "TMDB_API_KEY is not set");
     }
-
-    console.error(`[TMDB] All retries exhausted for: ${redact(url)}`);
-    return EMPTY_PAYLOAD as T;
+    try {
+        return await fetchTmdbJson<T>(url, TMDB_CONFIG);
+    } catch (error) {
+        console.error(`[TMDB] ${error instanceof Error ? error.message : error}`);
+        throw error;
+    }
 }
 
-/** Strips the API key before a URL reaches any log. */
-function redact(url: string) {
-    return url.replace(/api_key=[^&]*/, "api_key=***");
-}
+/**
+ * `settleAll` for the lists that make up one page. Set TMDB_ALLOW_EMPTY_BUILD=1 to let
+ * `next build` finish with empty sections while TMDB is unreachable (e.g. a network that blocks it);
+ * the pages then refresh themselves on the first request after `revalidate`.
+ */
+const allowEmptyBuild =
+    process.env.TMDB_ALLOW_EMPTY_BUILD === "1" && process.env.NEXT_PHASE === "phase-production-build";
+
+export const settlePageData: typeof settleAll = (requests, options = {}) =>
+    settleAll(requests, { ...options, tolerateTotalFailure: allowEmptyBuild });
 
 function buildUrl(path: string, params: Record<string, string | number | undefined> = {}) {
     const search = new URLSearchParams({ api_key: API_KEY ?? "" });
@@ -133,7 +124,8 @@ export type TvCategory = keyof typeof TV_CATEGORIES;
 /** True when `slug` is a category this app actually serves. Used to 404 unknown slugs. */
 export function isKnownCategory(slug: string, type: MediaType): boolean {
     const map = type === "tv" ? TV_CATEGORIES : MOVIE_CATEGORIES;
-    return slug in map;
+    // `slug in map` is also true for inherited names ("constructor", "__proto__", ...).
+    return hasOwnKey(map, slug);
 }
 
 // ─── TMDB API ─────────────────────────────────────────────────────────────────
@@ -150,12 +142,16 @@ export const TMDB = {
     getUpcoming: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.upcoming)),
 
     getMoviesByCategory: (category: string, page = 1) => {
-        const endpoint = MOVIE_CATEGORIES[category as MovieCategory] ?? MOVIE_CATEGORIES.popular;
+        const endpoint = isKnownCategory(category, "movie")
+            ? MOVIE_CATEGORIES[category as MovieCategory]
+            : MOVIE_CATEGORIES.popular;
         return tmdbFetch<TmdbListResponse>(buildUrl(endpoint, { page }));
     },
 
     getTvShowsByCategory: (category: string, page = 1) => {
-        const endpoint = TV_CATEGORIES[category as TvCategory] ?? TV_CATEGORIES.popular;
+        const endpoint = isKnownCategory(category, "tv")
+            ? TV_CATEGORIES[category as TvCategory]
+            : TV_CATEGORIES.popular;
         return tmdbFetch<TmdbListResponse>(buildUrl(endpoint, { page }));
     },
 

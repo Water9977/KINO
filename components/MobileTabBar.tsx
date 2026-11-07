@@ -53,7 +53,9 @@ export function MobileTabBar() {
             {/* Bottom padding so content isn't hidden behind the tab bar */}
             <div className="h-24 md:hidden" aria-hidden="true" />
 
-            <AnimatePresence>
+            {/* `initial={false}`: render the bar in place. Its slide-up from opacity 0 was part of the
+                server HTML, so the bar stayed invisible until hydration. */}
+            <AnimatePresence initial={false}>
                 {visible && (
                     <motion.nav
                         initial={{ y: 100, opacity: 0 }}
@@ -83,7 +85,7 @@ export function MobileTabBar() {
                                         aria-current={active ? "page" : undefined}
                                     >
                                         {/* Active background pill */}
-                                        <AnimatePresence>
+                                        <AnimatePresence initial={false}>
                                             {active && (
                                                 <motion.div
                                                     layoutId="mobile-tab-active"
@@ -116,18 +118,16 @@ export function MobileTabBar() {
                                         </motion.div>
 
                                         <motion.span
-                                            animate={{
-                                                opacity: active ? 1 : 0.5,
-                                                fontWeight: active ? 700 : 500,
-                                            }}
-                                            className="text-[9px] leading-none tracking-wide relative z-10 text-gray-400"
+                                            // Inactive labels used to be gray-400 at 50% opacity and 9px: 2.7:1.
+                                            animate={{ fontWeight: active ? 700 : 500 }}
+                                            className="text-[10px] leading-none tracking-wide relative z-10 text-gray-400"
                                             style={{ color: active ? "#60a5fa" : undefined }}
                                         >
                                             {tab.label}
                                         </motion.span>
 
                                         {/* Active dot indicator */}
-                                        <AnimatePresence>
+                                        <AnimatePresence initial={false}>
                                             {active && (
                                                 <motion.div
                                                     initial={{ scale: 0, opacity: 0 }}

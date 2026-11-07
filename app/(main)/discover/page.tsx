@@ -35,10 +35,11 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
     const genreId = readParam(sp.genre);
     const providerId = readParam(sp.provider);
 
+    // The title list is the page; the genre and provider filters can render empty without it.
     const [data, genreData, providerData] = await Promise.all([
         TMDB.discover(type, sortBy, genreId, 1, providerId),
-        TMDB.getGenres(type),
-        TMDB.getWatchProviders(type),
+        TMDB.getGenres(type).catch(() => ({ genres: [] })),
+        TMDB.getWatchProviders(type).catch(() => ({ results: [] })),
     ]);
 
     const movies = toCardItems(data.results, type);
@@ -48,7 +49,7 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
         .slice(0, PROVIDER_LIMIT);
 
     return (
-        <main className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#2563eb] selection:text-[#0a0a0a]">
+        <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#2563eb] selection:text-[#0a0a0a]">
             <div className="pt-32 px-6 max-w-7xl mx-auto pb-20">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                     <div className="space-y-2">
@@ -91,7 +92,7 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
                         filters={{ sort_by: sortBy, genre_id: genreId, provider_id: providerId }}
                     />
                 ) : (
-                    <div className="text-center py-20 text-gray-500 flex flex-col items-center gap-4">
+                    <div className="text-center py-20 text-gray-400 flex flex-col items-center gap-4">
                         <div className="bg-white/5 p-6 rounded-full">
                             <ListFilter size={40} aria-hidden="true" />
                         </div>
@@ -100,6 +101,6 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
                     </div>
                 )}
             </div>
-        </main>
+        </div>
     );
 }

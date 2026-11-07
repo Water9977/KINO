@@ -3,7 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { Star, Calendar, Clock, User, Film } from "lucide-react";
 
-import { TMDB, tmdbImage } from "@/lib/tmdb";
+import { TMDB, TmdbError, tmdbImage } from "@/lib/tmdb";
 import type { MediaType, TmdbDetails } from "@/lib/types";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { MovieRow } from "@/components/MovieRow";
@@ -17,6 +17,20 @@ function resolveMediaType(type?: string): MediaType {
     return type === "tv" ? "tv" : "movie";
 }
 
+/**
+ * TMDB's own "no such title" (404) becomes `null`, which the page turns into a real 404. Anything
+ * else (outage, rejected key, rate limit) is rethrown to the error boundary: a temporary failure
+ * must not be reported to visitors and search engines as "this title does not exist".
+ */
+async function loadDetails(id: string, type: MediaType): Promise<TmdbDetails | null> {
+    try {
+        return await TMDB.getDetails(id, type);
+    } catch (error) {
+        if (error instanceof TmdbError && error.reason === "not_found") return null;
+        throw error;
+    }
+}
+
 /** A details payload is usable only if TMDB actually returned a title. */
 function isFound(movie: TmdbDetails | null): movie is TmdbDetails {
     return Boolean(movie && movie.success !== false && (movie.title || movie.name));
@@ -26,7 +40,13 @@ function isFound(movie: TmdbDetails | null): movie is TmdbDetails {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const { id } = await params;
     const { type } = await searchParams;
-    const movie = await TMDB.getDetails(id, resolveMediaType(type));
+    let movie: TmdbDetails | null;
+    try {
+        movie = await loadDetails(id, resolveMediaType(type));
+    } catch {
+        // Metadata must not take the page down; the page itself reports the failure.
+        return { title: "Watch" };
+    }
 
     if (!isFound(movie)) {
         return { title: "Not Found" };
@@ -42,6 +62,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     return {
         title: `Watch ${title}${year ? ` (${year})` : ""}`,
         description,
+        // Without this the page inherited the home page's canonical and told search engines it
+        // was a duplicate of "/".
+        alternates: { canonical: `/watch/${id}${resolveMediaType(type) === "tv" ? "?type=tv" : ""}` },
         openGraph: {
             title: `${title} — Watch on Kino`,
             description,
@@ -71,7 +94,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
     const { type } = await searchParams;
     const mediaType = resolveMediaType(type);
 
-    const movie = await TMDB.getDetails(id, mediaType);
+    const movie = await loadDetails(id, mediaType);
 
     if (!isFound(movie)) {
         notFound();
@@ -118,7 +141,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
     };
 
     return (
-        <main className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden">
+        <div className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
@@ -163,7 +186,10 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
             </div>
 
             {/* Details */}
-            <div className="relative z-10 mx-auto max-w-[1600px] px-4 md:px-6 lg:px-10 mt-8 mb-16">
+            <div
+                id="title-details"
+                className="relative z-10 mx-auto max-w-[1600px] px-4 md:px-6 lg:px-10 mt-8 mb-16"
+            >
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                     <div className="lg:col-span-2 space-y-8">
                         <div className="space-y-4">
@@ -216,7 +242,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                     <User size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                                         Director
                                     </p>
                                     <p className="text-sm font-black text-white">{director}</p>
@@ -236,7 +262,11 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                             The Cast
                         </h2>
                     </div>
-                    <ul className="flex gap-4 overflow-x-auto px-4 md:px-6 lg:px-10 pb-8 no-scrollbar list-none">
+                    <ul
+                        tabIndex={0}
+                        aria-label="Cast members"
+                        className="flex gap-4 overflow-x-auto px-4 md:px-6 lg:px-10 pb-8 no-scrollbar list-none"
+                    >
                         {cast.map((actor) => {
                             const profileUrl = tmdbImage(actor.profile_path, "w185");
                             return (
@@ -261,7 +291,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                                     </div>
                                     <h3 className="text-sm font-bold text-white truncate">{actor.name}</h3>
                                     {actor.character && (
-                                        <p className="text-[11px] text-gray-500 font-medium truncate">
+                                        <p className="text-[11px] text-gray-400 font-medium truncate">
                                             {actor.character}
                                         </p>
                                     )}
@@ -279,7 +309,7 @@ export default async function WatchPage({ params, searchParams }: PageProps) {
                     </div>
                 </div>
             )}
-        </main>
+        </div>
     );
 }
 

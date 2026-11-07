@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,13 @@ export type ExpandableSearchBarProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+    onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+    /** Accessible name for the text field (a placeholder is not a name). */
+    inputLabel?: string;
+    /** Longest query the field accepts. */
+    maxLength?: number;
+    /** Extra attributes for the <input>; the parent supplies the combobox wiring. */
+    inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
     children?: React.ReactNode;
 };
 
@@ -32,12 +39,17 @@ export default function ExpandableSearchBar(props: ExpandableSearchBarProps) {
         open,
         onOpenChange,
         onBlur,
+        onFocus,
+        inputLabel = 'Search',
+        maxLength,
+        inputProps,
         children
     } = props;
 
     const containerRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
     const formRef = useRef<HTMLFormElement | null>(null);
+    const formId = useId();
 
     useEffect(() => {
         function onDocClick(e: MouseEvent) {
@@ -89,6 +101,8 @@ export default function ExpandableSearchBar(props: ExpandableSearchBarProps) {
             <button
                 type='button'
                 aria-label={open ? 'Close search' : 'Open search'}
+                aria-expanded={open}
+                aria-controls={formId}
                 onClick={() => onOpenChange(!open)}
                 className={cn(
                     'absolute inset-0 z-20 grid place-items-center rounded-full border',
@@ -100,13 +114,18 @@ export default function ExpandableSearchBar(props: ExpandableSearchBarProps) {
                 )}
             >
                 {/* Swap icon with CSS opacity instead of Framer AnimatePresence */}
-                <Search className={cn('size-5 absolute transition-all duration-150', open ? 'opacity-0 scale-75' : 'opacity-100 scale-100')} />
-                <X className={cn('size-4 absolute transition-all duration-150', open ? 'opacity-100 scale-100' : 'opacity-0 scale-75')} />
+                <Search className={cn('size-5 absolute transition-all duration-150', open ? 'opacity-0 scale-75' : 'opacity-100 scale-100')} aria-hidden="true" />
+                <X className={cn('size-4 absolute transition-all duration-150', open ? 'opacity-100 scale-100' : 'opacity-0 scale-75')} aria-hidden="true" />
             </button>
 
-            {/* Search form — CSS transition on width, NO Framer Motion, NO backdrop-blur */}
+            {/* Search form — CSS transition on width, NO Framer Motion, NO backdrop-blur.
+                While collapsed it is only faded out, so `inert` takes it out of the tab order and the
+                accessibility tree; without it the invisible, unnamed input was a keyboard tab stop. */}
             <form
+                id={formId}
                 ref={formRef}
+                role="search"
+                inert={!open}
                 onSubmit={handleSubmit}
                 className={cn(
                     'absolute top-0 h-10 rounded-full border overflow-hidden flex items-center',
@@ -130,18 +149,23 @@ export default function ExpandableSearchBar(props: ExpandableSearchBarProps) {
             >
                 {/* Search Icon visible inside */}
                 <span className='absolute left-3 z-10 text-white/50 pointer-events-none'>
-                    <Search className='size-4' />
+                    <Search className='size-4' aria-hidden="true" />
                 </span>
 
                 <div className='relative flex-1 min-w-0 flex items-center h-full pl-10'>
                     <input
-                        ref={inputRef}
                         type='text'
+                        autoComplete='off'
+                        aria-label={inputLabel}
+                        maxLength={maxLength}
+                        {...inputProps}
+                        ref={inputRef}
                         value={value}
                         onChange={onChange}
                         onBlur={onBlur}
+                        onFocus={onFocus}
                         placeholder={open ? placeholder : ''}
-                        className="w-full h-full bg-transparent text-sm text-white outline-none placeholder:text-white/40 whitespace-nowrap overflow-x-auto pr-4"
+                        className="w-full h-full bg-transparent text-sm text-white outline-none placeholder:text-white/60 whitespace-nowrap overflow-x-auto pr-4"
                     />
                 </div>
             </form>

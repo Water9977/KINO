@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Star, Play, Calendar, Film } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +9,18 @@ import { hapticLight } from "@/lib/haptics";
 
 export type Movie = TmdbListItem;
 
-export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => {
+interface MovieCardProps {
+    movie: Movie;
+    index: number;
+    /**
+     * Heading level of the title. Rows put cards under their own <h2>, so the default is h3; grid
+     * pages have only the page <h1> above the cards and pass "h2" so the outline does not skip a level.
+     */
+    headingLevel?: "h2" | "h3";
+}
+
+export const MovieCard = ({ movie, index, headingLevel = "h3" }: MovieCardProps) => {
+    const Heading = headingLevel;
     const isTv = movie.media_type === "tv" || (!movie.title && !!movie.name);
     const title = movie.title || movie.name || "Untitled";
     const linkHref = `/watch/${movie.id}${isTv ? "?type=tv" : ""}`;
@@ -21,12 +31,10 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
     const posterUrl = tmdbImage(movie.poster_path, "w500");
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: (index % 6) * 0.1, duration: 0.5 }}
-            className="group relative flex flex-col gap-3 rounded-2xl p-2 transition-all duration-500 hover:bg-white/5 active:scale-95"
+        <div
+            // CSS entrance (see `.card-enter` in globals.css): visible in the server HTML, no JS needed.
+            style={{ animationDelay: `${(index % 6) * 100}ms` }}
+            className="card-enter group relative flex flex-col gap-3 rounded-2xl p-2 transition-all duration-500 hover:bg-white/5 active:scale-95"
         >
             <Link
                 href={linkHref}
@@ -44,9 +52,9 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
                             loading="lazy"
                         />
                     ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/[0.03] text-gray-700">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/[0.03] text-gray-500">
                             <Film size={28} />
-                            <span className="px-3 text-center text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                            <span className="px-3 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                 No poster
                             </span>
                         </div>
@@ -71,18 +79,18 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
 
             <div className="flex flex-col gap-1.5 px-1 py-1">
                 <Link href={linkHref} tabIndex={-1}>
-                    <h3 className="line-clamp-1 text-sm font-bold tracking-tight text-white/90 transition-colors group-hover:text-white font-outfit">
+                    <Heading className="line-clamp-1 text-sm font-bold tracking-tight text-white/90 transition-colors group-hover:text-white font-outfit">
                         {title}
-                    </h3>
+                    </Heading>
                 </Link>
 
-                <div className="flex items-center gap-3 text-[11px] font-semibold text-gray-500">
+                <div className="flex items-center gap-3 text-[11px] font-semibold text-gray-400">
                     <span className="flex items-center gap-1">
                         <Calendar size={10} />
                         {year}
                     </span>
                     <span className="h-1 w-1 rounded-full bg-gray-700" aria-hidden="true" />
-                    <span className="uppercase tracking-wider text-gray-600">
+                    <span className="uppercase tracking-wider text-gray-400">
                         {isTv ? "TV" : "Movie"}
                     </span>
                 </div>
@@ -92,6 +100,6 @@ export const MovieCard = ({ movie, index }: { movie: Movie; index: number }) => 
                 className="absolute bottom-1 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-[#2563eb]/20 to-transparent scale-x-0 transition-transform duration-500 group-hover:scale-x-100"
                 aria-hidden="true"
             />
-        </motion.div>
+        </div>
     );
 };

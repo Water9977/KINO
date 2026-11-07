@@ -34,19 +34,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Include currently trending titles so watch pages are discoverable.
     // The full TMDB catalogue is far too large to enumerate here.
+    // A sitemap without title entries for a few minutes is harmless, so a TMDB failure degrades to
+    // the static routes instead of failing the build or the page.
     const [trendingMovies, trendingTv] = await Promise.all([
-        TMDB.getTrending(),
-        TMDB.getTvShowsByCategory("trending"),
+        TMDB.getTrending().catch(() => null),
+        TMDB.getTvShowsByCategory("trending").catch(() => null),
     ]);
 
     const titleEntries: MetadataRoute.Sitemap = [
-        ...(trendingMovies.results ?? []).map((m) => ({
+        ...(trendingMovies?.results ?? []).map((m) => ({
             url: `${siteUrl}/watch/${m.id}`,
             lastModified: now,
             changeFrequency: "weekly" as const,
             priority: 0.7,
         })),
-        ...(trendingTv.results ?? []).map((t) => ({
+        ...(trendingTv?.results ?? []).map((t) => ({
             url: `${siteUrl}/watch/${t.id}?type=tv`,
             lastModified: now,
             changeFrequency: "weekly" as const,

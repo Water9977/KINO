@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 /**
  * Each genre gets its own Dirtyline Studio font via the CSS variable that
@@ -77,11 +77,16 @@ const genres = [
 
 export default function CinemaFlipWords() {
   const [index, setIndex] = useState(0);
+  const reduceMotion = useReducedMotion();
 
+  // The words rotate forever, which is moving content with no way to stop it (WCAG 2.2.2). Visitors
+  // who ask for reduced motion get the first word and no cycling. The effect only starts a timer, so
+  // the rendered markup is identical on the server and the client either way.
   useEffect(() => {
+    if (reduceMotion) return;
     const id = setInterval(() => setIndex(i => (i + 1) % genres.length), 2800);
     return () => clearInterval(id);
-  }, []);
+  }, [reduceMotion]);
 
   const current = genres[index];
 

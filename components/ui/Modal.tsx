@@ -1,69 +1,27 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef, type RefObject } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 
-const FOCUSABLE =
-    'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+import { useDialogFocus } from "@/components/ui/useDialogFocus";
 
 interface ModalProps {
     onClose: () => void;
     label: string;
     children: React.ReactNode;
     className?: string;
+    /** Where focus goes on close if the element that opened the dialog no longer exists. */
+    returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 /**
  * Accessible overlay shell: labelled dialog role, Escape to close, scroll lock,
  * a focus trap, and focus restored to whatever opened it.
  */
-export function Modal({ onClose, label, children, className = "" }: ModalProps) {
+export function Modal({ onClose, label, children, className = "", returnFocusRef }: ModalProps) {
     const panelRef = useRef<HTMLDivElement>(null);
-    const previouslyFocused = useRef<HTMLElement | null>(null);
-
-    useEffect(() => {
-        previouslyFocused.current = document.activeElement as HTMLElement | null;
-
-        const { overflow } = document.body.style;
-        document.body.style.overflow = "hidden";
-
-        // Move focus into the dialog so the next Tab stays inside it.
-        const firstFocusable = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE);
-        (firstFocusable ?? panelRef.current)?.focus();
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                e.preventDefault();
-                onClose();
-                return;
-            }
-
-            if (e.key !== "Tab" || !panelRef.current) return;
-
-            const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-            if (items.length === 0) return;
-
-            const first = items[0];
-            const last = items[items.length - 1];
-
-            if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault();
-                last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault();
-                first.focus();
-            }
-        };
-
-        document.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = overflow;
-            previouslyFocused.current?.focus();
-        };
-    }, [onClose]);
+    useDialogFocus(panelRef, { onClose, returnFocusRef });
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
@@ -97,7 +55,7 @@ export function ModalCloseButton({ onClose }: { onClose: () => void }) {
         <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-3 right-3 p-2 text-gray-500 hover:text-white transition-colors"
+            className="absolute top-3 right-3 p-2 text-gray-400 hover:text-white transition-colors"
         >
             <X size={18} aria-hidden="true" />
         </button>

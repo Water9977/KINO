@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { TMDB } from "@/lib/tmdb";
+import { MAX_QUERY_LENGTH } from "@/lib/validate";
 
 /** Autocomplete only needs a handful of rows. */
 const RESULT_LIMIT = 5;
-const MAX_QUERY_LENGTH = 100;
 
 // Simple fixed-window limiter, per instance. Enough to stop a single client
 // hammering the endpoint and burning the shared TMDB quota. A multi-instance
@@ -60,7 +60,12 @@ export async function GET(request: Request) {
             { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } }
         );
     } catch (error) {
+        // Previously a TMDB failure came back as an empty 200 with a public cache header, so a
+        // blip was pinned in the CDN for minutes. Report it as a failure and never cache it.
         console.error("[api/search] failed:", error);
-        return NextResponse.json({ results: [] }, { status: 500 });
+        return NextResponse.json(
+            { results: [], error: { code: "upstream_unavailable", message: "Search is temporarily unavailable." } },
+            { status: 502, headers: { "Cache-Control": "no-store" } }
+        );
     }
 }

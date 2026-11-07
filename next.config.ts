@@ -8,20 +8,26 @@ import type { NextConfig } from "next";
  * 'unsafe-inline'/'unsafe-eval' in script-src are required by Next's inlined
  * bootstrap and by the dev overlay; tightening them further needs a nonce.
  */
+const isProduction = process.env.NODE_ENV === "production";
+
 const contentSecurityPolicy = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://image.tmdb.org",
     "font-src 'self' data:",
-    "connect-src 'self' https://api.themoviedb.org",
+    // The browser never calls TMDB (every TMDB request is made on the server), so only same-origin
+    // fetches are needed.
+    "connect-src 'self'",
     "worker-src 'self'",
     "frame-src https://vidlink.pro",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    "upgrade-insecure-requests",
+    // Upgrading http sub-resources breaks the site when it is opened over plain http (LAN device
+    // testing, `next start` on localhost in Safari), so it is only sent in production.
+    ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const baseSecurityHeaders = [
@@ -30,7 +36,9 @@ const baseSecurityHeaders = [
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     {
         key: "Permissions-Policy",
-        value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+        // `interest-cohort` (FLoC) was removed from browsers and only logs a warning now.
+        value:
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), browsing-topics=()",
     },
 ];
 

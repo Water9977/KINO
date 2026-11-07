@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { uiFontVariables } from "@/lib/fonts";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
+import { MotionProvider } from "@/components/MotionProvider";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kino-web-neon.vercel.app";
 
@@ -22,7 +23,6 @@ export const metadata: Metadata = {
   description:
     "Unlimited movies, TV shows, and more. Stream with cinematic quality and premium features.",
   keywords: ["movies", "streaming", "tv shows", "kino", "cinema"],
-  alternates: { canonical: "/" },
 
   applicationName: "Kino",
   appleWebApp: {
@@ -35,7 +35,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Kino",
-    url: siteUrl,
     title: "Kino | Premium Streaming Experience",
     description: "Unlimited movies, TV shows, and more.",
   },
@@ -60,7 +59,7 @@ export default function RootLayout({
         className={`${uiFontVariables} antialiased bg-[#0a0a0a] text-white custom-scrollbar selection:bg-blue-600/30`}
       >
         <ServiceWorkerRegistrar />
-        {children}
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );

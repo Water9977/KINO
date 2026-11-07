@@ -1,11 +1,12 @@
 "use client";
 
-export default function KineticDotsLoader() {
+export default function KineticDotsLoader({ label = "Loading" }: { label?: string }) {
     const dots = 4; // Increased to 4 for better rhythm
 
     return (
-        <div className='flex items-center justify-center min-h-[250px] p-8 bg-slate-950/0'>
-            <div className='flex gap-5'>
+        <div role='status' className='flex items-center justify-center min-h-[250px] p-8 bg-slate-950/0'>
+            <span className='sr-only'>{label}</span>
+            <div className='flex gap-5' aria-hidden='true'>
                 {[...Array(dots)].map((_, i) => (
                     <div
                         key={i}
