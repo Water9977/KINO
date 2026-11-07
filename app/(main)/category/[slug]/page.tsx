@@ -78,7 +78,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             : type === "tv"
                 ? TMDB.getTvShowsByCategory(slug)
                 : TMDB.getMoviesByCategory(slug),
-        TMDB.getGenres(type),
+        // The filter bar can render without its genre list; the title list failing is the error.
+        TMDB.getGenres(type).catch(() => ({ genres: [] })),
     ]);
 
     const movies = toCardItems(listData.results, type);

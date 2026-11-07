@@ -35,10 +35,11 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
     const genreId = readParam(sp.genre);
     const providerId = readParam(sp.provider);
 
+    // The title list is the page; the genre and provider filters can render empty without it.
     const [data, genreData, providerData] = await Promise.all([
         TMDB.discover(type, sortBy, genreId, 1, providerId),
-        TMDB.getGenres(type),
-        TMDB.getWatchProviders(type),
+        TMDB.getGenres(type).catch(() => ({ genres: [] })),
+        TMDB.getWatchProviders(type).catch(() => ({ results: [] })),
     ]);
 
     const movies = toCardItems(data.results, type);

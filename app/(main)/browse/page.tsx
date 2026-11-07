@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TMDB, toCardItems } from "@/lib/tmdb";
+import { TMDB, settlePageData, toCardItems } from "@/lib/tmdb";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { MovieRow } from "@/components/MovieRow";
 
@@ -23,7 +23,7 @@ export default async function BrowsePage() {
         upcomingMovies,
         popularTv,
         topRatedTv,
-    ] = await Promise.all([
+    ] = await settlePageData([
         TMDB.getTrending(),
         TMDB.getNowPlaying(),
         TMDB.getTopRated(),
@@ -31,18 +31,20 @@ export default async function BrowsePage() {
         TMDB.getUpcoming(),
         TMDB.getTvShowsByCategory("popular"),
         TMDB.getTvShowsByCategory("top_rated"),
-    ]);
+        // The hero comes from the first request. If it (or most of the rest) fails, this throws, so
+        // Next keeps serving the last good page instead of replacing it with an empty one.
+    ], { required: [0] });
 
-    const heroMovies = toCardItems(trendingMovies.results?.slice(0, HERO_SLIDE_COUNT), "movie");
+    const heroMovies = toCardItems(trendingMovies?.results?.slice(0, HERO_SLIDE_COUNT), "movie");
 
     const rows = [
-        { title: "Trending Movies", movies: toCardItems(trendingMovies.results, "movie"), link: "/category/trending" },
-        { title: "Popular TV Shows", movies: toCardItems(popularTv.results, "tv"), link: "/tv" },
-        { title: "Popular Movies", movies: toCardItems(popularMovies.results, "movie"), link: "/category/popular" },
-        { title: "Top Rated TV Shows", movies: toCardItems(topRatedTv.results, "tv"), link: "/tv" },
-        { title: "Top Rated Movies", movies: toCardItems(topRatedMovies.results, "movie"), link: "/category/top_rated" },
-        { title: "Upcoming Movie Releases", movies: toCardItems(upcomingMovies.results, "movie"), link: "/category/upcoming" },
-        { title: "In Theaters Now", movies: toCardItems(nowPlayingMovies.results, "movie"), link: "/category/now_playing" },
+        { title: "Trending Movies", movies: toCardItems(trendingMovies?.results, "movie"), link: "/category/trending" },
+        { title: "Popular TV Shows", movies: toCardItems(popularTv?.results, "tv"), link: "/tv" },
+        { title: "Popular Movies", movies: toCardItems(popularMovies?.results, "movie"), link: "/category/popular" },
+        { title: "Top Rated TV Shows", movies: toCardItems(topRatedTv?.results, "tv"), link: "/tv" },
+        { title: "Top Rated Movies", movies: toCardItems(topRatedMovies?.results, "movie"), link: "/category/top_rated" },
+        { title: "Upcoming Movie Releases", movies: toCardItems(upcomingMovies?.results, "movie"), link: "/category/upcoming" },
+        { title: "In Theaters Now", movies: toCardItems(nowPlayingMovies?.results, "movie"), link: "/category/now_playing" },
     ];
 
     return (

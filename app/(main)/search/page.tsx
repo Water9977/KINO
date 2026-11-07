@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Search, Film } from "lucide-react";
 
 import { TMDB, toCardItems } from "@/lib/tmdb";
+import type { TmdbListResponse } from "@/lib/types";
 import { MovieCard } from "@/components/MovieCard";
 import { MAX_QUERY_LENGTH, firstString } from "@/lib/validate";
 
@@ -32,7 +33,14 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 export default async function SearchPage({ searchParams }: PageProps) {
     const query = readQuery((await searchParams).q);
 
-    const searchResults = await TMDB.search(query);
+    // A failed lookup must not be presented as "No matches found".
+    let searchResults: TmdbListResponse = { results: [] };
+    let searchFailed = false;
+    try {
+        searchResults = await TMDB.search(query);
+    } catch {
+        searchFailed = true;
+    }
 
     // Drop people and anything we can't render a card for.
     const results = toCardItems(
@@ -66,7 +74,9 @@ export default async function SearchPage({ searchParams }: PageProps) {
                             )}
                         </h1>
                         <p className="text-gray-500 font-medium tracking-tight">
-                            {query
+                            {searchFailed
+                                ? "Search is temporarily unavailable."
+                                : query
                                 ? `We found ${results.length} ${results.length === 1 ? "match" : "matches"} for your query.`
                                 : "Use the search bar above to find a movie or series."}
                         </p>
@@ -78,6 +88,24 @@ export default async function SearchPage({ searchParams }: PageProps) {
                         {results.map((item, idx) => (
                             <MovieCard key={`${item.media_type}-${item.id}`} movie={item} index={idx} />
                         ))}
+                    </div>
+                ) : searchFailed ? (
+                    <div
+                        role="alert"
+                        className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-white/5 rounded-[40px] bg-white/[0.02]"
+                    >
+                        <h2 className="text-2xl font-black tracking-tight text-white mb-2 uppercase">
+                            Couldn&apos;t reach the movie database
+                        </h2>
+                        <p className="text-gray-500 font-medium text-center max-w-xs mb-6">
+                            This is usually temporary. Please try again in a moment.
+                        </p>
+                        <a
+                            href={`/search?q=${encodeURIComponent(query)}`}
+                            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm"
+                        >
+                            Try again
+                        </a>
                     </div>
                 ) : (
                     query && (

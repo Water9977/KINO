@@ -72,13 +72,26 @@ export async function fetchMovies(
             : TMDB.getMoviesByCategory(category, p);
     };
 
-    const [first, second] = await Promise.all([loadPage(safePage), loadPage(secondPage)]);
+    const [firstResult, secondResult] = await Promise.allSettled([
+        loadPage(safePage),
+        loadPage(secondPage),
+    ]);
 
-    const movies = [...(first.results || []), ...(second.results || [])];
+    // A failed first page throws, so the grid shows its error + "Try again" state instead of the
+    // end-of-list message. `nextPage` is not advanced on a throw, so a retry fetches the same pages.
+    if (firstResult.status === "rejected") throw firstResult.reason;
+    const first = firstResult.value;
 
     // TMDB reports total_pages on every list response. Trust it when present,
     // and otherwise fall back to "an empty batch means we're done".
     const totalPages = Math.min(first.total_pages ?? MAX_TMDB_PAGE, MAX_TMDB_PAGE);
+
+    // The second page legitimately may not exist (past the last page); any other failure must not
+    // be mistaken for the end of the list or silently drop 20 titles.
+    if (secondResult.status === "rejected" && secondPage <= totalPages) throw secondResult.reason;
+    const second = secondResult.status === "fulfilled" ? secondResult.value : { results: [] };
+
+    const movies = [...(first.results || []), ...(second.results || [])];
     const hasMore = movies.length > 0 && secondPage < totalPages;
 
     return { movies, nextPage: secondPage + 1, hasMore };
