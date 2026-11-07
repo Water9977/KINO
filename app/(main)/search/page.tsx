@@ -3,13 +3,22 @@ import { Search, Film } from "lucide-react";
 
 import { TMDB, toCardItems } from "@/lib/tmdb";
 import { MovieCard } from "@/components/MovieCard";
+import { MAX_QUERY_LENGTH, firstString } from "@/lib/validate";
 
 interface PageProps {
-    searchParams: Promise<{ q?: string }>;
+    searchParams: Promise<{ q?: string | string[] }>;
+}
+
+/**
+ * `?q=a&q=b` arrives as an array and a very long value would be reflected into the title and
+ * sent to TMDB, so normalise to one trimmed, length-capped string.
+ */
+function readQuery(q: string | string[] | undefined): string {
+    return (firstString(q) ?? "").trim().slice(0, MAX_QUERY_LENGTH);
 }
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-    const { q } = await searchParams;
+    const q = readQuery((await searchParams).q);
     return {
         title: q ? `Search: ${q}` : "Search",
         description: q
@@ -21,8 +30,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 }
 
 export default async function SearchPage({ searchParams }: PageProps) {
-    const { q } = await searchParams;
-    const query = q?.trim() ?? "";
+    const query = readQuery((await searchParams).q);
 
     const searchResults = await TMDB.search(query);
 

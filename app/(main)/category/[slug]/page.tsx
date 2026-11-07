@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { TMDB, isKnownCategory, toCardItems } from "@/lib/tmdb";
+import { hasOwnKey } from "@/lib/validate";
 import type { MediaType } from "@/lib/types";
 import { CategoryGrid } from "@/components/CategoryGrid";
 import { FilterBar } from "@/components/FilterBar";
@@ -22,6 +23,11 @@ const CATEGORY_TITLES: Record<string, string> = {
     airing_today: "Airing Today",
 };
 
+/** Own-property lookup so a slug like "constructor" can't return a function from the object. */
+function categoryTitle(slug: string): string {
+    return hasOwnKey(CATEGORY_TITLES, slug) ? CATEGORY_TITLES[slug] : "Browse";
+}
+
 function readType(value: string | string[] | undefined): MediaType {
     return value === "tv" ? "tv" : "movie";
 }
@@ -39,11 +45,12 @@ export async function generateMetadata({
 
     if (!isKnownCategory(slug, type)) return { title: "Not Found" };
 
-    const label = CATEGORY_TITLES[slug] ?? "Browse";
+    const label = categoryTitle(slug);
     const suffix = type === "tv" ? "TV Shows" : "Movies";
     return {
         title: `${label} ${suffix}`,
         description: `Browse ${label.toLowerCase()} ${suffix.toLowerCase()} on Kino.`,
+        alternates: { canonical: `/category/${slug}${type === "tv" ? "?type=tv" : ""}` },
     };
 }
 
@@ -75,7 +82,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     ]);
 
     const movies = toCardItems(listData.results, type);
-    const baseTitle = CATEGORY_TITLES[slug] ?? "Browse";
+    const baseTitle = categoryTitle(slug);
     const heading = isDiscoverMode
         ? `${baseTitle} · Filtered`
         : `${baseTitle} ${type === "tv" ? "TV Shows" : "Movies"}`;

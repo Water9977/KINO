@@ -1,6 +1,12 @@
 "use server";
 
-import { TMDB } from "@/lib/tmdb";
+import { TMDB, isKnownCategory } from "@/lib/tmdb";
+import {
+    DISCOVER_SORTS,
+    isIdLike,
+    isMediaType,
+    isNumericString,
+} from "@/lib/validate";
 import type { MediaType, TmdbListItem, TmdbListResponse, TmdbSeasonDetails } from "@/lib/types";
 
 /** TMDB refuses `page` above 500. Clamp so a crafted request can't spin. */
@@ -29,6 +35,23 @@ export async function fetchMovies(
     type: MediaType = "movie",
     filters?: DiscoverFilters
 ): Promise<FetchMoviesResult> {
+    // Server Action arguments arrive from the network untyped, so TypeScript's types prove
+    // nothing here: reject anything that could change which TMDB URL the server requests.
+    if (!isMediaType(type)) throw new Error("Invalid media type");
+    if (category !== "discover" && !isKnownCategory(category, type)) {
+        throw new Error("Invalid category");
+    }
+    if (filters !== undefined) {
+        if (filters === null || typeof filters !== "object") throw new Error("Invalid filters");
+        if (filters.sort_by && !DISCOVER_SORTS.includes(filters.sort_by)) {
+            throw new Error("Invalid sort order");
+        }
+        if (filters.genre_id && !isNumericString(filters.genre_id)) throw new Error("Invalid genre");
+        if (filters.provider_id && !isNumericString(filters.provider_id)) {
+            throw new Error("Invalid provider");
+        }
+    }
+
     const safePage = Math.min(Math.max(Math.trunc(page) || 1, 1), MAX_TMDB_PAGE);
     const secondPage = safePage + 1;
 
@@ -65,5 +88,8 @@ export async function getSeasonDetails(
     tvId: number,
     seasonNumber: number
 ): Promise<TmdbSeasonDetails> {
+    // Interpolated straight into the TMDB path, so a value like "../credits" would make the
+    // server request an arbitrary TMDB URL with the site's API key.
+    if (!isIdLike(tvId) || !isIdLike(seasonNumber, 1000)) throw new Error("Invalid id");
     return TMDB.getSeasonDetails(tvId, seasonNumber);
 }

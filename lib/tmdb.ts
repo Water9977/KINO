@@ -7,6 +7,7 @@ import type {
     TmdbProviderResponse,
     TmdbSeasonDetails,
 } from "./types";
+import { hasOwnKey } from "@/lib/validate";
 
 const BASE_URL = process.env.TMDB_BASE_URL ?? "https://api.themoviedb.org/3";
 const API_KEY = process.env.TMDB_API_KEY;
@@ -133,7 +134,8 @@ export type TvCategory = keyof typeof TV_CATEGORIES;
 /** True when `slug` is a category this app actually serves. Used to 404 unknown slugs. */
 export function isKnownCategory(slug: string, type: MediaType): boolean {
     const map = type === "tv" ? TV_CATEGORIES : MOVIE_CATEGORIES;
-    return slug in map;
+    // `slug in map` is also true for inherited names ("constructor", "__proto__", ...).
+    return hasOwnKey(map, slug);
 }
 
 // ─── TMDB API ─────────────────────────────────────────────────────────────────
@@ -150,12 +152,16 @@ export const TMDB = {
     getUpcoming: () => tmdbFetch<TmdbListResponse>(buildUrl(MOVIE_CATEGORIES.upcoming)),
 
     getMoviesByCategory: (category: string, page = 1) => {
-        const endpoint = MOVIE_CATEGORIES[category as MovieCategory] ?? MOVIE_CATEGORIES.popular;
+        const endpoint = isKnownCategory(category, "movie")
+            ? MOVIE_CATEGORIES[category as MovieCategory]
+            : MOVIE_CATEGORIES.popular;
         return tmdbFetch<TmdbListResponse>(buildUrl(endpoint, { page }));
     },
 
     getTvShowsByCategory: (category: string, page = 1) => {
-        const endpoint = TV_CATEGORIES[category as TvCategory] ?? TV_CATEGORIES.popular;
+        const endpoint = isKnownCategory(category, "tv")
+            ? TV_CATEGORIES[category as TvCategory]
+            : TV_CATEGORIES.popular;
         return tmdbFetch<TmdbListResponse>(buildUrl(endpoint, { page }));
     },
 

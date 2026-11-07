@@ -18,9 +18,9 @@ Browser
   │     fetchMovies       → infinite-scroll grid
   │     getSeasonDetails  → episode list
   │
-  ├─ Route handler (app/api/search) → navbar autocomplete (rate limited)
+  ├─ Route handler (app/api/search) → navbar autocomplete (best-effort per-instance rate limit)
   │
-  └─ <iframe> ──► vidlink.pro   (playback, sandboxed)
+  └─ <iframe> ──► vidlink.pro   (playback, NOT sandboxed - see Notes)
 ```
 
 The TMDB API key is **server-only**. It is never exposed to the browser.
@@ -45,7 +45,7 @@ Unknown category slugs and unknown title ids return a real **404**.
 ```
 app/            routes, layouts, server actions, robots.ts, sitemap.ts
 components/     UI components
-  navbar/       navbar subcomponents (drawer, suggestions, cards)
+  navbar/       navbar subcomponents (suggestions, profile and notice cards)
   ui/           reusable primitives (modal, skeleton, loader, glow card)
 lib/
   tmdb.ts       TMDB client, image URL helper, category maps
@@ -60,7 +60,7 @@ docs/           code audit
 
 ## Getting started
 
-**Prerequisites:** Node.js 18.18+ and a free [TMDB API key](https://www.themoviedb.org/settings/api).
+**Prerequisites:** Node.js 20.9+ (required by Next 16) and a free [TMDB API key](https://www.themoviedb.org/settings/api).
 
 ```bash
 git clone https://github.com/Water9977/KINO.git
@@ -110,7 +110,7 @@ Open http://localhost:3000.
 
 ## Notes and caveats
 
-**Playback.** Video is not hosted by Kino. The player embeds a third-party provider in a sandboxed iframe that omits `allow-top-navigation` and `allow-popups`. Availability depends entirely on that provider.
+**Playback.** Video is not hosted by Kino. The player embeds a third-party provider in an iframe **without** a `sandbox` attribute, because the provider refuses to play when sandboxed. Framing is restricted by the CSP (`frame-src` allows only that one host), but the embedded page can still navigate the visitor's tab or open popups after a click. Availability depends entirely on that provider.
 
 **Fonts.** The six display faces in `public/fonts/` are used only on the landing page and are loaded with `preload: false` so other routes don't pay for them. They are third-party commercial faces — check their licences before deploying commercially.
 
@@ -124,4 +124,4 @@ See [`docs/CODE_AUDIT.md`](docs/CODE_AUDIT.md) for the full audit and the remain
 
 ## License
 
-MIT.
+No licence has been chosen yet and there is no `LICENSE` file, so all rights are reserved by default.

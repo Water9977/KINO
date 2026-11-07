@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   description:
     "Unlimited movies, TV shows, and more. Stream with cinematic quality and premium features.",
   keywords: ["movies", "streaming", "tv shows", "kino", "cinema"],
-  alternates: { canonical: "/" },
 
   applicationName: "Kino",
   appleWebApp: {
@@ -35,7 +34,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Kino",
-    url: siteUrl,
     title: "Kino | Premium Streaming Experience",
     description: "Unlimited movies, TV shows, and more.",
   },

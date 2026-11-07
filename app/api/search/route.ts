@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { TMDB } from "@/lib/tmdb";
+import { MAX_QUERY_LENGTH } from "@/lib/validate";
 
 /** Autocomplete only needs a handful of rows. */
 const RESULT_LIMIT = 5;
-const MAX_QUERY_LENGTH = 100;
 
 // Simple fixed-window limiter, per instance. Enough to stop a single client
 // hammering the endpoint and burning the shared TMDB quota. A multi-instance

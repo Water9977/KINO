@@ -42,6 +42,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     return {
         title: `Watch ${title}${year ? ` (${year})` : ""}`,
         description,
+        // Without this the page inherited the home page's canonical and told search engines it
+        // was a duplicate of "/".
+        alternates: { canonical: `/watch/${id}${resolveMediaType(type) === "tv" ? "?type=tv" : ""}` },
         openGraph: {
             title: `${title} — Watch on Kino`,
             description,
